@@ -10,6 +10,7 @@ import tornado.testing
 
 from delivery.exceptions import InvalidStatusException, RunfolderNotFoundException, ProjectNotFoundException
 from delivery.services.staging_service import StagingService
+from delivery.services.file_system_service import FileSystemService
 from delivery.services.external_program_service import ExternalProgramService
 from delivery.models.db_models import StagingOrder, StagingStatus
 from delivery.models.execution import Execution, ExecutionResult
@@ -70,6 +71,8 @@ class TestStagingService(AsyncTestCase):
         self.mock_external_runner_service = mock.create_autospec(ExternalProgramService)
         self.mock_external_runner_service.run.return_value = mock_execution
 
+        self.mock_file_system_service = mock.create_autospec(FileSystemService)
+
         @coroutine
         def wait_as_coroutine(x):
             return ExecutionResult(stdout=stdout_mimicing_rsync, stderr="", status_code=0)
@@ -83,14 +86,14 @@ class TestStagingService(AsyncTestCase):
 
         mock_db_session_factory = mock.MagicMock()
 
-
         self.staging_service = StagingService(staging_dir="/tmp",
                                               project_links_directory="/tmp",
                                               external_program_service=self.mock_external_runner_service,
                                               staging_repo=mock_staging_repo,
                                               runfolder_repo=self.mock_runfolder_repo,
                                               session_factory=mock_db_session_factory,
-                                              project_dir_repo=self.mock_general_project_repo)
+                                              project_dir_repo=self.mock_general_project_repo,
+                                              file_system_service=self.mock_file_system_service)
         self.staging_service.io_loop_factory = MockIOLoop
         super(TestStagingService, self).setUp()
 

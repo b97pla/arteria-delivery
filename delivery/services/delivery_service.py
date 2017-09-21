@@ -42,10 +42,10 @@ class DeliveryService(object):
         else:
             self.delivery_sources_repo.add_source(source)
 
-    def _validate_and_stage_source(self, source, force_delivery, path):
+    def _validate_and_stage_source(self, source, force_delivery, path, project_name):
         self._validate_source_and_add_to_repo(source, force_delivery, path)
         # Start staging
-        stage_order = self.staging_service.create_new_stage_order(path=source.path)
+        stage_order = self.staging_service.create_new_stage_order(path=source.path, project_name=project_name)
         self.staging_service.stage_order(stage_order)
         return stage_order
 
@@ -56,7 +56,7 @@ class DeliveryService(object):
                                                               source_name="{}/{}".format(project.runfolder_name,
                                                                                          project.name),
                                                               path=project.path)
-            stage_order = self._validate_and_stage_source(source, force_delivery, project.path)
+            stage_order = self._validate_and_stage_source(source, force_delivery, project.path, project.name)
             projects_and_stage_order_ids[project.name] = stage_order.id
 
         return projects_and_stage_order_ids
@@ -178,7 +178,7 @@ class DeliveryService(object):
                                                           batch_nbr=batch_nbr)
         self.delivery_sources_repo.add_source(source)
 
-        stage_order = self.staging_service.create_new_stage_order(path=source.path)
+        stage_order = self.staging_service.create_new_stage_order(path=source.path, project_name=project_name)
         self.staging_service.stage_order(stage_order)
         return {source.project_name: stage_order.id}
 
@@ -195,7 +195,7 @@ class DeliveryService(object):
                                                           source_name=os.path.basename(project.path),
                                                           path=project.path)
 
-        stage_order = self._validate_and_stage_source(source, force_delivery, project.path)
+        stage_order = self._validate_and_stage_source(source, force_delivery, project.path, project_name)
         return {source.project_name: stage_order.id}
 
     def check_staging_status(self, staging_id):

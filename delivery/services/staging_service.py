@@ -42,7 +42,8 @@ class StagingService(object):
                  runfolder_repo,
                  project_dir_repo,
                  project_links_directory,
-                 session_factory):
+                 session_factory,
+                 file_system_service = FileSystemService):
         """
         Instantiate a new StagingService
         :param staging_dir: the directory to which files/dirs should be staged
@@ -61,6 +62,7 @@ class StagingService(object):
         self.project_dir_repo = project_dir_repo
         self.project_links_directory = project_links_directory
         self.session_factory = session_factory
+        self.file_system_service = file_system_service
 
     @staticmethod
     @gen.coroutine
@@ -83,10 +85,10 @@ class StagingService(object):
         # thread, there fore it is re-materialized in here...
         staging_order = staging_repo.get_staging_order_by_id(staging_order_id, session)
         try:
-            # Ensure that the source has a trailing slash, since we want
-            # rsync to move the content of the folder, not the folder itself
-            source_with_trailing_slash = "{}/".format(staging_order.source)
-            cmd = ['rsync', '--stats', '-r', '--copy-links', source_with_trailing_slash, staging_order.staging_target]
+            staging_source_with_trailing_slash = staging_order.source + "/"
+            cmd = ['rsync', '--stats', '-r', '--copy-links',
+                   staging_source_with_trailing_slash, staging_order.staging_target]
+            log.debug("Running rsync with command: {}".format(" ".join(cmd)))
 
             execution = external_program_service.run(cmd)
 
@@ -146,6 +148,9 @@ class StagingService(object):
                                  "staging_repo": self.staging_repo,
                                  "session_factory": self.session_factory}
 
+            if not self.file_system_service.exists(stage_order.staging_target):
+                self.file_system_service.makedirs(stage_order.staging_target)
+
             yield StagingService._copy_dir(**args_for_copy_dir)
 
         # TODO Better error handling
@@ -154,10 +159,11 @@ class StagingService(object):
             session.commit()
             raise e
 
-    def create_new_stage_order(self, path):
+    def create_new_stage_order(self, path, project_name):
         staging_order = self.staging_repo.create_staging_order(source=path,
                                                                status=StagingStatus.pending,
-                                                               staging_target_dir=self.staging_dir)
+                                                               staging_target_dir=self.staging_dir,
+                                                               project_name=project_name)
         return staging_order
 
     def get_stage_order_by_id(self, stage_order_id):

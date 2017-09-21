@@ -56,12 +56,14 @@ class DatabaseBasedStagingRepository(object):
         except NoResultFound:
             return None
 
-    def create_staging_order(self, source, status, staging_target_dir):
+    def create_staging_order(self, source, status, staging_target_dir, project_name):
         """
         Create a StatingOrder and commit it to the database
         :param source: the directory or file to stage
         :param status: the initial StatingStatus to assign to the StatingORder
         :param staging_target_dir: the directory to which the StagingOrder should transfer the source
+        :param project_name: name of the project to stage (this will be used to determine the name of the
+        staging target)
         :return:
         """
 
@@ -72,18 +74,13 @@ class DatabaseBasedStagingRepository(object):
 
         if self.file_system_service.isfile(order.source):
             log.debug("Order source is a file")
-            source_base_name = self.file_system_service.basename(order.source)
         elif self.file_system_service.isdir(order.source):
             log.debug("Order source is a dir")
-            source_base_name = self.file_system_service.basename(self.file_system_service.abspath(order.source))
         else:
             raise NotImplementedError("Could not parse a valid type from: {}, valid types"
                                       " are directory and file.".format(order.source))
 
-        staging_target = os.path.join(staging_target_dir,
-                                      "{}_{}".format(
-                                          order.id,
-                                          source_base_name))
+        staging_target = os.path.join(staging_target_dir, str(order.id), project_name)
 
         log.debug("Set the staging target to: {}".format(staging_target))
 

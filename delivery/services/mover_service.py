@@ -48,6 +48,8 @@ class MoverDeliveryService(object):
             if delivery_order.md5sum_file:
                 cmd += delivery_order.md5sum_file
 
+            log.debug("Running mover with cmd: {}".format(" ".join(cmd)))
+
             execution = external_program_service.run(cmd)
             delivery_order.delivery_status = DeliveryStatus.mover_processing_delivery
             delivery_order.mover_pid = execution.pid

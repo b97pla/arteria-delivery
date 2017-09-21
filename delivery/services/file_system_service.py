@@ -104,3 +104,7 @@ class FileSystemService(object):
         :return: None
         """
         os.makedirs(path)
+
+    @staticmethod
+    def exists(path):
+        return os.path.exists(path)

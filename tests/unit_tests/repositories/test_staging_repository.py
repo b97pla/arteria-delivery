@@ -56,14 +56,15 @@ class TestStagingRepository(unittest.TestCase):
     def test_create_staging_order(self):
         order = self.staging_repo.create_staging_order(source='/foo',
                                                        status=StagingStatus.pending,
-                                                       staging_target_dir='/foo/target')
+                                                       staging_target_dir='/foo/target',
+                                                       project_name='bar')
 
         self.assertIsInstance(order, StagingOrder)
         self.assertEqual(order.status, StagingStatus.pending)
         self.assertEqual(order.id, 2)
         self.assertEqual(order.pid, None)
         self.assertEqual(order.source, '/foo')
-        self.assertEqual(order.staging_target, '/foo/target/2_foo')
+        self.assertEqual(order.staging_target, '/foo/target/2/bar')
 
         # Check that the object has been committed, i.e. there are no 'dirty' objects in session
         self.assertEqual(len(self.session.dirty), 0)
