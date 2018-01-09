@@ -148,7 +148,7 @@ class DeliveryService(object):
 
         :param project_name: of project to deliver
         :param mode: A DeliveryMode
-        :return: a dict with {<project name>: <staging order id>}
+        :return: a tupple with a dict with {<project name>: <staging order id>}, and the projects
         """
         projects = list(self.runfolder_service.find_runfolders_for_project(project_name))
 
@@ -162,7 +162,7 @@ class DeliveryService(object):
         else:
             batch_nbr = max_batch_nbr + 1
 
-        projects_to_deliver = list(self._get_projects_to_deliver(projects, mode, batch_nbr))
+            projects_to_deliver= list(self._get_projects_to_deliver(projects, mode, batch_nbr))
 
         if not projects_to_deliver:
             raise ProjectAlreadyDeliveredException("All runfolders for this project has already "
@@ -176,11 +176,12 @@ class DeliveryService(object):
                                                           source_name="{}/batch{}".format(project_name, batch_nbr),
                                                           path=links_directory,
                                                           batch_nbr=batch_nbr)
+
         self.delivery_sources_repo.add_source(source)
 
         stage_order = self.staging_service.create_new_stage_order(path=source.path, project_name=project_name)
         self.staging_service.stage_order(stage_order)
-        return {source.project_name: stage_order.id}
+        return {source.project_name: stage_order.id}, projects_to_deliver
 
     def deliver_arbitrary_directory_project(self, project_name, dir_name=None, force_delivery=False):
 
