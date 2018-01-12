@@ -241,9 +241,18 @@ class TestDeliveryService(unittest.TestCase):
                                            staging_service=staging_service_mock,
                                            project_links_dir=tmpdirname)
 
-            result = self.delivery_service.deliver_all_runfolders_for_project(project_name="ABC_123",
-                                                                              mode=DeliveryMode.CLEAN)
-            self.assertEqual(result["ABC_123"], 1)
+            projects_and_ids, projects = \
+                self.delivery_service.deliver_all_runfolders_for_project(project_name="ABC_123",
+                                                                         mode=DeliveryMode.CLEAN)
+
+            self.assertEqual(projects_and_ids["ABC_123"], 1)
+
+            staged_runfolders = list(map(lambda staged_path: staged_path.to_dict(), projects))
+            paths = []
+            for item in staged_runfolders:
+                paths.append(item['path'])
+            self.assertEqual(paths,["/foo/160930_ST-E00216_0112_BH37CWALXX/Projects/ABC_123",
+                                    "/foo/160930_ST-E00216_0111_BH37CWALXX/Projects/ABC_123"])
 
 
 if __name__ == '__main__':

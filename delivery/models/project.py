@@ -38,6 +38,11 @@ class RunfolderProject(BaseProject):
         self.runfolder_path = runfolder_path
         self.runfolder_name = runfolder_name
 
+    def to_dict(self):
+        return {"name": self.name,
+                "path": self.path,
+                "runfolder_path": self.runfolder_path,
+                "runfolder_name": self.runfolder_name}
 
 class GeneralProject(BaseProject):
     """

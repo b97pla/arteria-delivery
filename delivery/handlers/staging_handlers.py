@@ -81,11 +81,14 @@ class StagingProjectRunfoldersHandler(BaseStagingHandler):
             delivery_mode = DeliveryMode[requested_delivery_mode]
             log.info("Will attempt to stage runfolders for project {} with type {}".format(project_id, delivery_mode))
 
-            project_and_stage_id = self.delivery_service.deliver_all_runfolders_for_project(project_id, delivery_mode)
+            project_and_stage_id, projects = self.delivery_service.deliver_all_runfolders_for_project(project_id, delivery_mode)
             links, staging_ids_ids = self._construct_response_from_project_and_status(project_and_stage_id)
+            project_and_staged_id_dict = list(map(lambda project: project.to_dict(), projects))
+
             self.set_status(ACCEPTED)
             self.write_json({'staging_order_links': links,
-                             'staging_order_ids': staging_ids_ids})
+                             'staging_order_ids': staging_ids_ids,
+                             'staged_data': project_and_staged_id_dict})
         except ProjectNotFoundException as e:
             log.warning("Request issued for non-existent project {}".format(project_id))
             self.set_status(NOT_FOUND, reason=e.msg)
