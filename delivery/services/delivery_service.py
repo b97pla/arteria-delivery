@@ -162,7 +162,7 @@ class DeliveryService(object):
         else:
             batch_nbr = max_batch_nbr + 1
 
-        projects_to_deliver= list(self._get_projects_to_deliver(projects, mode, batch_nbr))
+        projects_to_deliver = list(self._get_projects_to_deliver(projects, mode, batch_nbr))
 
         if not projects_to_deliver:
             raise ProjectAlreadyDeliveredException("All runfolders for this project has already "

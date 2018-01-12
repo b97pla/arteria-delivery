@@ -248,7 +248,7 @@ class TestDeliveryService(unittest.TestCase):
             self.assertEqual(projects_and_ids["ABC_123"], 1)
 
             staged_runfolders = list(map(lambda staged_path: staged_path.to_dict(), projects))
-            paths=[]
+            paths = []
             for item in staged_runfolders:
                 paths.append(item['path'])
             self.assertEqual(paths,["/foo/160930_ST-E00216_0112_BH37CWALXX/Projects/ABC_123",
