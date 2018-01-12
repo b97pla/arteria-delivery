@@ -246,7 +246,13 @@ class TestDeliveryService(unittest.TestCase):
                                                                          mode=DeliveryMode.CLEAN)
 
             self.assertEqual(projects_and_ids["ABC_123"], 1)
-            # TODO Write test for projects variable
+
+            staged_runfolders = list(map(lambda staged_path: staged_path.to_dict(), projects))
+            paths=[]
+            for item in staged_runfolders:
+                paths.append(item['path'])
+            self.assertEqual(paths,["/foo/160930_ST-E00216_0112_BH37CWALXX/Projects/ABC_123",
+                                    "/foo/160930_ST-E00216_0111_BH37CWALXX/Projects/ABC_123"])
 
 
 if __name__ == '__main__':
