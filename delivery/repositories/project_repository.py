@@ -42,7 +42,7 @@ class GeneralProjectRepository(object):
         matching_project = list(filter(lambda p: p.name == project_name, known_projects))
 
         if not matching_project:
-            raise ProjectNotFoundException("Could not find a project with name: {}".format(dir_name))
+            raise ProjectNotFoundException("Could not find a project with name: {}".format(project_name))
         if len(matching_project) > 1:
             raise TooManyProjectsFound("Found more than one project matching name: {}. This should"
                                        "not be possible...".format(dir()))
