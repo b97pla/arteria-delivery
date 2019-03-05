@@ -41,6 +41,10 @@ class FileSystemService(object):
         """
         return self.list_directories(base_path)
 
+    def list_files_recursively(self, base_path):
+        for root, dirs, files in os.walk(base_path):
+            yield from map(lambda f: os.path.join(root, f), files)
+
     @staticmethod
     def isdir(path):
         """
@@ -108,3 +112,11 @@ class FileSystemService(object):
     @staticmethod
     def exists(path):
         return os.path.exists(path)
+
+    @staticmethod
+    def rename(src, dst):
+        return os.rename(src, dst)
+
+    @staticmethod
+    def relpath(path, start):
+        return os.path.relpath(path, start)

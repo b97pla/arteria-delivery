@@ -6,6 +6,7 @@ from delivery.exceptions import RunfolderNotFoundException, ProjectNotFoundExcep
 
 log = logging.getLogger(__name__)
 
+
 class RunfolderService(object):
 
     def __init__(self, runfolder_repo):
