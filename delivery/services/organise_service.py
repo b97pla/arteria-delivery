@@ -1,9 +1,7 @@
 
 import logging
 import os
-import signal
 import time
-import re
 
 from delivery.exceptions import ProjectAlreadyOrganisedException
 

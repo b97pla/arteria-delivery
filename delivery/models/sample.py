@@ -1,8 +1,5 @@
 
 import os
-import re
-
-from delivery.exceptions import FileNameParsingException
 
 
 class Sample(object):
