@@ -58,4 +58,3 @@ class GeneralProject(BaseProject):
         """
         self.name = name
         self.path = os.path.abspath(path)
-

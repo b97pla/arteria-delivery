@@ -5,6 +5,7 @@ import time
 
 from delivery.exceptions import ProjectAlreadyOrganisedException
 
+from delivery.models.sample import Sample, SampleFile
 from delivery.services.file_system_service import FileSystemService
 
 log = logging.getLogger(__name__)
@@ -53,7 +54,7 @@ class OrganiseService(object):
             if not force:
                 raise ProjectAlreadyOrganisedException(msg)
             existing_path = os.path.dirname(organised_project_path)
-            backup_path = "{}.{}".format(existing_path, str(time.time))
+            backup_path = "{}.{}".format(existing_path, str(time.time()))
             log.info(msg)
             log.info("existing path '{}' will be moved to '{}'".format(existing_path, backup_path))
             self.file_system_service.rename(existing_path, backup_path)
@@ -70,7 +71,7 @@ class OrganiseService(object):
             return not lanes or f.lane_no in lanes
 
         # symlink each sample in its own directory
-        organised_sample_path = os.path.join(organised_project_path, "Sample_{}".format(sample.sample_name))
+        organised_sample_path = os.path.join(organised_project_path, "Sample_{}".format(sample.name))
 
         # filter the files if lanes should be excluded
         sample_files_to_symlink = list(filter(_include_sample_file, sample.sample_files))
@@ -78,7 +79,20 @@ class OrganiseService(object):
             self.file_system_service.makedirs(organised_sample_path)
 
         # symlink the sample files using relative paths
+        organised_sample = Sample(
+            name=sample.name,
+            project_name=sample.project_name,
+            sample_files=[])
         for sample_file in sample_files_to_symlink:
             link_name = os.path.join(organised_sample_path, sample_file.file_name)
             relative_path = self.file_system_service.relpath(sample_file.sample_path, os.path.dirname(link_name))
             self.file_system_service.symlink(relative_path, link_name)
+            organised_sample.sample_files.append(
+                SampleFile(
+                    link_name,
+                    sample_name=sample_file.sample_name,
+                    sample_index=sample_file.sample_index,
+                    lane_no=sample_file.lane_no,
+                    read_no=sample_file.read_no,
+                    is_index=sample_file.is_index))
+        return organised_sample
