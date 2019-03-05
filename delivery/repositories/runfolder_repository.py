@@ -107,3 +107,40 @@ class FileSystemBasedRunfolderRepository(object):
         for project in self.get_projects():
             if project.name == project_name:
                 yield project
+
+
+class FileSystemBasedUnorganisedRunfolderRepository(FileSystemBasedRunfolderRepository):
+
+    def _add_projects_to_runfolder(self, runfolder):
+
+        def dir_contains_fastq_files(d):
+            return any(
+                map(
+                    lambda f: f.endswith("fastq.gz"),
+                    self.file_system_service.list_files_recursively(d)))
+
+        def project_from_dir(d):
+            return RunfolderProject(
+                name=os.path.basename(d),
+                path=os.path.join(projects_base_dir, d),
+                runfolder_path=runfolder.path,
+                runfolder_name=runfolder.name
+            )
+
+        try:
+            projects_base_dir = os.path.join(runfolder.path, "Unaligned")
+
+            # only include directories that have fastq.gz files beneath them
+            project_directories = filter(
+                dir_contains_fastq_files,
+                self.file_system_service.find_project_directories(projects_base_dir)
+            )
+
+            # There are scenarios where there are no project directories in the runfolder,
+            # i.e. when fastq files have not yet been divided into projects
+            runfolder.projects = list(map(
+                project_from_dir, project_directories)) or None
+
+        except FileNotFoundError:
+            log.warning("Did not find Unaligned folder for: {}".format(runfolder.name))
+            pass

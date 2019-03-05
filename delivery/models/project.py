@@ -44,6 +44,7 @@ class RunfolderProject(BaseProject):
                 "runfolder_path": self.runfolder_path,
                 "runfolder_name": self.runfolder_name}
 
+
 class GeneralProject(BaseProject):
     """
     Model representing a project as a directory on disk.

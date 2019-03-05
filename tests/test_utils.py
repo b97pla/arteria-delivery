@@ -31,10 +31,11 @@ fake_directories = ["160930_ST-E00216_0111_BH37CWALXX",
 fake_projects = ["ABC_123", "DEF_456"]
 
 
-def mock_file_system_service(directories, projects):
+def mock_file_system_service(directories, projects, fastq_files=None):
     mock_file_system_service_instance = MagicMock()
     mock_file_system_service_instance.find_runfolder_directories.return_value = directories
     mock_file_system_service_instance.find_project_directories.return_value = projects
+    mock_file_system_service_instance.list_files_recursively.return_value = fastq_files or []
     return mock_file_system_service_instance
 
 _runfolder1 = Runfolder(name="160930_ST-E00216_0111_BH37CWALXX",
@@ -71,7 +72,7 @@ def assert_eventually_equals(self, timeout, f, expected, delay=0.1):
     while True:
         try:
             value = f()
-            self.assertEquals(value, expected)
+            self.assertEqual(value, expected)
             break
         except AssertionError:
             if time.time() - start_time <= timeout:

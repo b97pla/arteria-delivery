@@ -18,8 +18,10 @@ from delivery.handlers.project_handlers import ProjectHandler, ProjectsForRunfol
 from delivery.handlers.delivery_handlers import DeliverByStageIdHandler, DeliveryStatusHandler
 from delivery.handlers.staging_handlers import StagingRunfolderHandler, StagingHandler,\
     StageGeneralDirectoryHandler, StagingProjectRunfoldersHandler
+from delivery.handlers.organise_handlers import OrganiseRunfolderHandler
 
-from delivery.repositories.runfolder_repository import FileSystemBasedRunfolderRepository
+from delivery.repositories.runfolder_repository import FileSystemBasedRunfolderRepository, \
+    FileSystemBasedUnorganisedRunfolderRepository
 from delivery.repositories.staging_repository import DatabaseBasedStagingRepository
 from delivery.repositories.deliveries_repository import DatabaseBasedDeliveriesRepository
 from delivery.repositories.project_repository import GeneralProjectRepository
@@ -33,6 +35,7 @@ from delivery.services.file_system_service import FileSystemService
 from delivery.services.delivery_service import DeliveryService
 from delivery.services.runfolder_service import RunfolderService
 from delivery.services.best_practice_analysis_service import BestPracticeAnalysisService
+from delivery.services.organise_service import OrganiseService
 
 
 def routes(**kwargs):
@@ -51,6 +54,9 @@ def routes(**kwargs):
             name="projects_for_runfolder", kwargs=kwargs),
         url(r"/api/1.0/project/([^/]+)/best_practice_samples$", BestPracticeProjectSampleHandler,
             name="best_practice_samples", kwargs=kwargs),
+
+        url(r"/api/1.0/organise/runfolder/(.+)", OrganiseRunfolderHandler,
+            name="organise_runfolder", kwargs=kwargs),
 
         url(r"/api/1.0/stage/project/runfolders/(.+)", StagingProjectRunfoldersHandler,
             name="stage_multiple_runfolders_one_project", kwargs=kwargs),
@@ -110,6 +116,7 @@ def compose_application(config):
     _assert_is_dir(project_links_directory)
 
     runfolder_repo = FileSystemBasedRunfolderRepository(runfolder_dir)
+    unorganised_runfolder_repo = FileSystemBasedUnorganisedRunfolderRepository(runfolder_dir)
 
     general_project_dir = config['general_project_directory']
     _assert_is_dir(general_project_dir)
@@ -157,6 +164,9 @@ def compose_application(config):
 
     best_practice_analysis_service = BestPracticeAnalysisService(general_project_repo)
 
+    organise_service = OrganiseService(
+        runfolder_service=RunfolderService(unorganised_runfolder_repo))
+
     return dict(config=config,
                 runfolder_repo=runfolder_repo,
                 external_program_service=external_program_service,
@@ -164,7 +174,8 @@ def compose_application(config):
                 mover_delivery_service=mover_delivery_service,
                 delivery_service=delivery_service,
                 general_project_repo=general_project_repo,
-                best_practice_analysis_service=best_practice_analysis_service)
+                best_practice_analysis_service=best_practice_analysis_service,
+                organise_service=organise_service)
 
 
 def start():
