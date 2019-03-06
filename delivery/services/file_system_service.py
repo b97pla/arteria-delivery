@@ -3,6 +3,8 @@ import os
 
 import logging
 
+from delivery.exceptions import ChecksumFileNotFoundException, ChecksumNotFoundException
+
 log = logging.getLogger(__name__)
 
 
@@ -44,6 +46,18 @@ class FileSystemService(object):
     def list_files_recursively(self, base_path):
         for root, dirs, files in os.walk(base_path):
             yield from map(lambda f: os.path.join(root, f), files)
+
+    @staticmethod
+    def parse_checksum_file(checksum_file):
+        file_checksums = {}
+        try:
+            with open(checksum_file) as chksumh:
+                for entry in chksumh:
+                    checksum, file_path = entry.split()
+                    file_checksums[file_path] = checksum
+        except IOError as e:
+            raise ChecksumFileNotFoundException("Checksum file '{}' could not be opened: {}".format(checksum_file, e))
+        return file_checksums
 
     @staticmethod
     def isdir(path):

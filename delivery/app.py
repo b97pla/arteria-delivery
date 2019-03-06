@@ -26,6 +26,7 @@ from delivery.repositories.staging_repository import DatabaseBasedStagingReposit
 from delivery.repositories.deliveries_repository import DatabaseBasedDeliveriesRepository
 from delivery.repositories.project_repository import GeneralProjectRepository
 from delivery.repositories.delivery_sources_repository import DatabaseBasedDeliverySourcesRepository
+from delivery.repositories.sample_repository import RunfolderProjectBasedSampleRepository
 
 
 from delivery.services.mover_service import MoverDeliveryService
@@ -165,7 +166,8 @@ def compose_application(config):
     best_practice_analysis_service = BestPracticeAnalysisService(general_project_repo)
 
     organise_service = OrganiseService(
-        runfolder_service=RunfolderService(unorganised_runfolder_repo))
+        runfolder_service=RunfolderService(unorganised_runfolder_repo),
+        sample_repository=RunfolderProjectBasedSampleRepository())
 
     return dict(config=config,
                 runfolder_repo=runfolder_repo,

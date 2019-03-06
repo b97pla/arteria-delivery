@@ -63,8 +63,9 @@ class FileSystemBasedRunfolderRepository(object):
 
                 name = os.path.basename(directory)
                 path = os.path.join(self._base_path, directory)
+                checksums = self.get_checksums_for_runfolder(path)
 
-                runfolder = Runfolder(name=name, path=path, projects=None)
+                runfolder = Runfolder(name=name, path=path, projects=None, checksums=checksums)
                 self._add_projects_to_runfolder(runfolder)
 
                 yield runfolder
@@ -107,6 +108,11 @@ class FileSystemBasedRunfolderRepository(object):
         for project in self.get_projects():
             if project.name == project_name:
                 yield project
+
+    def get_checksums_for_runfolder(self, path):
+        checksum_path = os.path.join(path, "MD5", "checksums.md5")
+        file_checksums = self.file_system_service.parse_checksum_file(checksum_path)
+        return file_checksums
 
 
 class FileSystemBasedUnorganisedRunfolderRepository(FileSystemBasedRunfolderRepository):

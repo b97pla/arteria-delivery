@@ -94,5 +94,6 @@ class OrganiseService(object):
                     sample_index=sample_file.sample_index,
                     lane_no=sample_file.lane_no,
                     read_no=sample_file.read_no,
-                    is_index=sample_file.is_index))
+                    is_index=sample_file.is_index,
+                    checksum=sample_file.checksum))
         return organised_sample

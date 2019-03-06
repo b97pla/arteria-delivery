@@ -3,7 +3,7 @@ import logging
 import os
 import re
 
-from delivery.exceptions import FileNameParsingException
+from delivery.exceptions import ChecksumNotFoundException, FileNameParsingException
 from delivery.models.sample import Sample, SampleFile
 
 from delivery.services.file_system_service import FileSystemService
