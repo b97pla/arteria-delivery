@@ -7,6 +7,14 @@ class RunfolderNotFoundException(Exception):
     pass
 
 
+class ChecksumNotFoundException(Exception):
+    pass
+
+
+class ChecksumFileNotFoundException(Exception):
+    pass
+
+
 class ProjectNotFoundException(Exception):
     """
     Should be raised when and invalid or non-existent project is searched for.
@@ -51,4 +59,8 @@ class ProjectAlreadyOrganisedException(Exception):
 
 
 class FileNameParsingException(Exception):
+    pass
+
+
+class SamplesheetNotFoundException(Exception):
     pass

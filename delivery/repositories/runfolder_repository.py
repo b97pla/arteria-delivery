@@ -3,6 +3,7 @@ import logging
 import os
 import re
 
+from delivery.exceptions import ChecksumFileNotFoundException
 from delivery.models.runfolder import Runfolder
 from delivery.models.project import RunfolderProject
 from delivery.services.file_system_service import FileSystemService
@@ -14,6 +15,9 @@ class FileSystemBasedRunfolderRepository(object):
     """
     Uses the file system as a source of truth for information about what runfolders are available.
     """
+
+    CHECKSUM_FILE_PATH = os.path.join("MD5", "checksums.md5")
+    SAMPLESHEET_PATH = "SampleSheet.csv"
 
     def __init__(self, base_path, file_system_service=FileSystemService()):
         """
@@ -53,6 +57,10 @@ class FileSystemBasedRunfolderRepository(object):
             log.warning("Did not find Project folder for: {}".format(runfolder.name))
             pass
 
+    def _add_checksums_for_runfolder(self, runfolder):
+        checksums = self.file_system_service.parse_checksum_file(self.checksum_file(runfolder))
+        runfolder.checksums = checksums
+
     def _get_runfolders(self):
         # TODO Filter based on expression for runfolders...
         runfolder_expression = r"^\d+_"
@@ -66,6 +74,10 @@ class FileSystemBasedRunfolderRepository(object):
 
                 runfolder = Runfolder(name=name, path=path, projects=None)
                 self._add_projects_to_runfolder(runfolder)
+                try:
+                    self._add_checksums_for_runfolder(runfolder)
+                except ChecksumFileNotFoundException as e:
+                    log.info(e)
 
                 yield runfolder
 
@@ -108,39 +120,87 @@ class FileSystemBasedRunfolderRepository(object):
             if project.name == project_name:
                 yield project
 
+    def dump_project_checksums(self, project):
+        raise NotImplementedError()
+
+    def samplesheet_file(self, runfolder):
+        return os.path.join(runfolder.path, self.SAMPLESHEET_PATH)
+
+    def checksum_file(self, runfolder):
+        return os.path.join(runfolder.path, self.CHECKSUM_FILE_PATH)
+
+    def get_samplesheet(self, runfolder):
+        return self.file_system_service.extract_samplesheet_data(self.samplesheet_file(runfolder))
+
+    def dump_project_samplesheet(self, runfolder, project):
+
+        def _samplesheet_entry_in_project(e):
+            # TODO: check also lane, sample and index
+            return e.get("Sample_Project") == project.name
+
+        samplesheet_data = self.get_samplesheet(runfolder)
+        project_samplesheet_data = list(filter(_samplesheet_entry_in_project, samplesheet_data))
+        project_samplesheet_file = os.path.join(project.path, self.SAMPLESHEET_PATH)
+        self.file_system_service.write_samplesheet_file(project_samplesheet_file, project_samplesheet_data)
+        return project_samplesheet_file
+
 
 class FileSystemBasedUnorganisedRunfolderRepository(FileSystemBasedRunfolderRepository):
 
+    def __init__(self, base_path, project_repository, file_system_service=FileSystemService()):
+        """
+        Instantiate a new `FileSystemBasedUnorganisedRunfolderRepository` object.
+
+        :param base_path: the directory where runfolders are stored
+        :param project_repository: an instance of UnorganisedRunfolderProjectRepository
+        :param file_system_service: a service which can access the file system
+        """
+        super(FileSystemBasedUnorganisedRunfolderRepository, self).__init__(
+            base_path,
+            file_system_service=file_system_service)
+        self.project_repository = project_repository
+
     def _add_projects_to_runfolder(self, runfolder):
+        runfolder.projects = self.project_repository.get_projects(runfolder)
 
-        def dir_contains_fastq_files(d):
-            return any(
-                map(
-                    lambda f: f.endswith("fastq.gz"),
-                    self.file_system_service.list_files_recursively(d)))
+    def dump_project_checksums(self, project):
+        return self.project_repository.dump_checksums(project)
 
-        def project_from_dir(d):
-            return RunfolderProject(
-                name=os.path.basename(d),
-                path=os.path.join(projects_base_dir, d),
-                runfolder_path=runfolder.path,
-                runfolder_name=runfolder.name
-            )
+    def dump_project_samplesheet(self, runfolder, project):
+        """
+        Parses the SampleSheet from the supplied runfolder and extracts the rows in the [Data] section relevant to
+        the samples in the supplied project. The extracted data are written to a samplesheet file under the project
+        path.
 
-        try:
-            projects_base_dir = os.path.join(runfolder.path, "Unaligned")
+        :param runfolder: an instance of Runfolder
+        :param project: an instance of Project
+        :return: the path to the created SampleSheet file
+        """
+        def _samplesheet_entry_in_project(e):
+            """
+            Checks if a samplesheet row matches the project w.r.t.:
+                * project name
+                * sample id in project
+                * lane in project samples
+            """
+            return self.project_repository.is_sample_in_project(
+                project,
+                e.get("Sample_Project"),
+                e.get("Sample_ID"),
+                int(e.get("Lane")))
 
-            # only include directories that have fastq.gz files beneath them
-            project_directories = filter(
-                dir_contains_fastq_files,
-                self.file_system_service.find_project_directories(projects_base_dir)
-            )
+        samplesheet_data = self.get_samplesheet(runfolder)
+        project_samplesheet_data = list(filter(_samplesheet_entry_in_project, samplesheet_data))
+        project_samplesheet_file = os.path.join(project.path, self.SAMPLESHEET_PATH)
+        self.file_system_service.write_samplesheet_file(project_samplesheet_file, project_samplesheet_data)
+        return project_samplesheet_file
 
-            # There are scenarios where there are no project directories in the runfolder,
-            # i.e. when fastq files have not yet been divided into projects
-            runfolder.projects = list(map(
-                project_from_dir, project_directories)) or None
+    def get_project_report_files(self, project):
+        """
+        Calls the `UnorganisedRunfolderProjectRepository` instance associated with this repository to collect
+        paths to report files relevant to the supplied project.
 
-        except FileNotFoundError:
-            log.warning("Did not find Unaligned folder for: {}".format(runfolder.name))
-            pass
+        :param project: an instance of Project
+        :return: a tuple with the path to the directory containing the report and a list of paths to the report files
+        """
+        return self.project_repository.get_report_files(project)

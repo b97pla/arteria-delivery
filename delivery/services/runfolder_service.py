@@ -26,8 +26,7 @@ class RunfolderService(object):
         projects_on_runfolder_set = set(projects_on_runfolder)
         return projects_to_stage_set.issubset(projects_on_runfolder_set)
 
-    def find_projects_on_runfolder(self, runfolder_name, only_these_projects=None):
-        runfolder = self.find_runfolder(runfolder_name)
+    def find_projects_on_runfolder(self, runfolder, only_these_projects=None):
 
         names_of_project_on_runfolder = list(map(lambda x: x.name, runfolder.projects))
 
@@ -49,3 +48,9 @@ class RunfolderService(object):
 
     def find_runfolders_for_project(self, project_name):
         return self.runfolder_repo.get_project(project_name=project_name)
+
+    def dump_project_checksums(self, project):
+        return self.runfolder_repo.dump_project_checksums(project)
+
+    def dump_project_samplesheet(self, runfolder, project):
+        return self.runfolder_repo.dump_project_samplesheet(runfolder, project)

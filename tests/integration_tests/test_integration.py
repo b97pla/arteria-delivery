@@ -12,8 +12,9 @@ from arteria.web.app import AppService
 
 from delivery.app import routes as app_routes, compose_application
 from delivery.models.db_models import StagingStatus, DeliveryStatus
+from delivery.services.file_system_service import FileSystemService
 
-from tests.test_utils import assert_eventually_equals
+from tests.test_utils import assert_eventually_equals, unorganised_runfolder, samplesheet_file_from_runfolder
 
 
 class TestPythonVersion(unittest.TestCase):
@@ -45,6 +46,21 @@ class TestIntegration(AsyncHTTPTestCase):
         os.makedirs(tmp_proj_dir)
         with open(os.path.join(tmp_proj_dir, 'test_file'), 'wb') as f:
             f.write(os.urandom(1024))
+
+    @staticmethod
+    def _create_runfolder_structure_on_disk(runfolder):
+        os.makedirs(runfolder.path, exist_ok=True)
+        for project in runfolder.projects:
+            os.makedirs(project.path)
+            for sample in project.samples:
+                for sample_file in sample.sample_files:
+                    os.makedirs(os.path.dirname(sample_file.sample_path), exist_ok=True)
+                    with open(sample_file.sample_path, 'wb') as f:
+                        f.write(os.urandom(1024))
+        checksum_file = os.path.join(runfolder.path, "MD5", "checksums.md5")
+        os.mkdir(os.path.dirname(checksum_file))
+        FileSystemService.write_checksum_file(checksum_file, runfolder.checksums)
+        samplesheet_file_from_runfolder(runfolder)
 
     API_BASE = "/api/1.0"
 
@@ -154,6 +170,7 @@ class TestIntegration(AsyncHTTPTestCase):
         # where this runs)
 
         with tempfile.TemporaryDirectory(dir='./tests/resources/runfolders/', prefix='160930_ST-E00216_0111_BH37CWALXX_') as tmp_dir:
+
 
             dir_name = os.path.basename(tmp_dir)
             self._create_projects_dir_with_random_data(tmp_dir)

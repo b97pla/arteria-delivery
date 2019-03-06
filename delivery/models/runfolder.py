@@ -9,7 +9,7 @@ class Runfolder(BaseModel):
     Models the concept of a runfolder on disk
     """
 
-    def __init__(self, name, path, projects=None):
+    def __init__(self, name, path, projects=None, checksums=None):
         """
         Instantiate a new runfolder instance
         :param name: of the runfolder
@@ -19,6 +19,7 @@ class Runfolder(BaseModel):
         self.name = name
         self.path = os.path.abspath(path)
         self.projects = projects
+        self.checksums = checksums
 
     def __eq__(self, other):
         """

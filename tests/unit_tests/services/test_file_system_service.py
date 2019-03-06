@@ -5,7 +5,7 @@ import tempfile
 import unittest
 
 from delivery.services.file_system_service import FileSystemService
-
+from tests import test_utils
 
 class TestFileSystemService(unittest.TestCase):
 
@@ -35,3 +35,8 @@ class TestFileSystemService(unittest.TestCase):
             sorted(self.files),
             sorted(list(FileSystemService().list_files_recursively(self.rootdir)))
         )
+
+    def test_extract_samplesheet_data(self):
+        runfolder = test_utils.unorganised_runfolder(self.rootdir)
+        samplesheet_file, samplesheet_data = test_utils.samplesheet_file_from_runfolder(runfolder)
+        self.assertListEqual(samplesheet_data, FileSystemService.extract_samplesheet_data(samplesheet_file))
