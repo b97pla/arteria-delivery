@@ -1,4 +1,5 @@
 
+import mock
 import os
 import unittest
 
@@ -11,7 +12,8 @@ from tests import test_utils
 class TestSampleRepository(unittest.TestCase):
 
     def setUp(self):
-        self.project = test_utils.FAKE_RUNFOLDERS[0].projects[0]
+        self.runfolder = test_utils.UNORGANISED_RUNFOLDER
+        self.project = self.runfolder.projects[0]
         no_samples = 3
         sample_names = ["Sample{}".format(str(i)) for i in range(no_samples)]
         sample_index = ["S{}".format(str(i)) for i in range(no_samples)]
@@ -24,6 +26,7 @@ class TestSampleRepository(unittest.TestCase):
             os.path.join(self.project.path, sample_names[2])
         ]
         self.fastq_files = []
+        self.runfolder.checksums = dict()
         for i in range(no_samples):
             for ii in is_index:
                 for r in read_no:
@@ -37,15 +40,22 @@ class TestSampleRepository(unittest.TestCase):
                         ),
                         "001.fastq.gz"])
                     self.fastq_files.append(os.path.join(sample_paths[i], file_name))
-        file_system_service = test_utils.mock_file_system_service([], [], fastq_files=self.fastq_files)
-        self.sample_repo = RunfolderProjectBasedSampleRepository(file_system_service=file_system_service)
+                    self.runfolder.checksums[
+                        os.path.relpath(
+                            self.fastq_files[-1],
+                            os.path.dirname(
+                                self.runfolder.path))] = "checksum-{}-{}-{}".format(
+                        str(i), str(ii), str(r))
+        self.file_system_service = test_utils.mock_file_system_service([], [], fastq_files=self.fastq_files)
+        self.sample_repo = RunfolderProjectBasedSampleRepository(file_system_service=self.file_system_service)
 
     def test_get_samples(self):
-        for sample in self.sample_repo.get_samples(self.project):
+        self.file_system_service.relpath.side_effect = os.path.relpath
+        for sample in self.sample_repo.get_samples(self.project, self.runfolder):
             self.assertEqual(self.project.name, sample.project_name)
             self.assertEqual(4, len(sample.sample_files))
 
-    def test_sample_file_from_sample_path(self):
+    def test_sample_file_from_sample_path_bad(self):
         bad_filenames = [
             "this-is-not-a-proper-fastq-file-name",
             "not_ok_S1_L002_R1_001.fastq",
@@ -55,35 +65,44 @@ class TestSampleRepository(unittest.TestCase):
             self.assertRaises(
                 FileNameParsingException,
                 self.sample_repo.sample_file_from_sample_path,
-                bad_filename)
+                bad_filename,
+                self.runfolder)
 
-        sample_names = ["this-is-ok", "ok", "this_is_ok", "this_is_ok_S8_L008_R3"]
-        sample_index = ["S0", "S1", "S999"]
-        lane_no = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-        is_index = [True, False]
-        read_no = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-        suffix = ["001.fastq.gz", "002.fastq.gz", "999.fastq.gz"]
+    def test_sample_file_from_sample_path_good(self):
 
-        # this may be a bit over the top but what the heck..
-        for sn in sample_names:
-            for si in sample_index:
-                for l in lane_no:
-                    for i in is_index:
-                        for r in read_no:
-                            for sx in suffix:
-                                good_filename = "_".join([
-                                    sn,
-                                    si,
-                                    "L00{}".format(str(l)),
-                                    "{}{}".format(
-                                        "I" if i else "R",
-                                        str(r)),
-                                    sx])
-                                observed_sample_file = self.sample_repo.sample_file_from_sample_path(good_filename)
-                                self.assertTrue(all([
-                                    sn == observed_sample_file.sample_name,
-                                    si == observed_sample_file.sample_index,
-                                    l == observed_sample_file.lane_no,
-                                    i == observed_sample_file.is_index,
-                                    r == observed_sample_file.read_no
-                                ]))
+        with mock.patch.object(self.sample_repo, "checksum_from_sample_path", autospec=True) as checksum_mock:
+            checksum = "this-is-a-checksum"
+            checksum_mock.return_value = checksum
+            sample_names = ["this-is-ok", "ok", "this_is_ok", "this_is_ok_S8_L008_R3"]
+            sample_index = ["S0", "S1", "S999"]
+            lane_no = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+            is_index = [True, False]
+            read_no = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+            suffix = ["001.fastq.gz", "002.fastq.gz", "999.fastq.gz"]
+
+            # this may be a bit over the top but what the heck..
+            for sn in sample_names:
+                for si in sample_index:
+                    for l in lane_no:
+                        for i in is_index:
+                            for r in read_no:
+                                for sx in suffix:
+                                    good_filename = "_".join([
+                                        sn,
+                                        si,
+                                        "L00{}".format(str(l)),
+                                        "{}{}".format(
+                                            "I" if i else "R",
+                                            str(r)),
+                                        sx])
+                                    observed_sample_file = self.sample_repo.sample_file_from_sample_path(
+                                        good_filename,
+                                        self.runfolder)
+                                    self.assertTrue(all([
+                                        sn == observed_sample_file.sample_name,
+                                        si == observed_sample_file.sample_index,
+                                        l == observed_sample_file.lane_no,
+                                        i == observed_sample_file.is_index,
+                                        r == observed_sample_file.read_no,
+                                        checksum == observed_sample_file.checksum
+                                    ]))

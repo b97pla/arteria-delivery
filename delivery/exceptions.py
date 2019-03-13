@@ -60,3 +60,7 @@ class ProjectAlreadyOrganisedException(Exception):
 
 class FileNameParsingException(Exception):
     pass
+
+
+class SamplesheetNotFoundException(Exception):
+    pass

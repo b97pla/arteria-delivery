@@ -15,6 +15,7 @@ class SampleFile(object):
     def __init__(
             self,
             sample_path,
+            sample_id=None,
             sample_name=None,
             sample_index=None,
             lane_no=None,
@@ -24,6 +25,7 @@ class SampleFile(object):
         self.sample_path = os.path.abspath(sample_path)
         self.file_name = os.path.basename(sample_path)
         self.sample_name = sample_name
+        self.sample_id = sample_id or self.sample_name
         self.sample_index = sample_index
         self.lane_no = lane_no
         self.read_no = read_no

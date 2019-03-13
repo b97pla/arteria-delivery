@@ -18,10 +18,10 @@ class RunfolderProjectBasedSampleRepository(object):
     def __init__(self, file_system_service=FileSystemService()):
         self.file_system_service = file_system_service
 
-    def get_samples(self, project):
-        return self._get_samples(project)
+    def get_samples(self, project, runfolder):
+        return self._get_samples(project, runfolder)
 
-    def _get_samples(self, project):
+    def _get_samples(self, project, runfolder):
 
         def _is_fastq_file(f):
             return re.match(self.filename_regexp, f) is not None
@@ -32,13 +32,16 @@ class RunfolderProjectBasedSampleRepository(object):
         def _sample_from_name(n):
             return Sample(n, project.name)
 
+        def _sample_file_from_path(p):
+            return self.sample_file_from_sample_path(p, runfolder)
+
         project_fastq_files = filter(
             _is_fastq_file,
             self.file_system_service.list_files_recursively(project.path))
 
         # create SampleFile objects from the paths, create Sample objects and attach the sample file objects
         project_sample_files = list(map(
-            self.sample_file_from_sample_path,
+            _sample_file_from_path,
             project_fastq_files))
         project_samples = map(
             _sample_from_name,
@@ -52,7 +55,16 @@ class RunfolderProjectBasedSampleRepository(object):
             ))
             yield project_sample
 
-    def sample_file_from_sample_path(self, sample_path):
+    def checksum_from_sample_path(self, sample_path, runfolder):
+        relative_path = self.file_system_service.relpath(
+            sample_path,
+            os.path.dirname(runfolder.path))
+        try:
+            return runfolder.checksums[relative_path]
+        except (KeyError, TypeError):
+            raise ChecksumNotFoundException("no pre-calculated checksum could be found for '{}'".format(relative_path))
+
+    def sample_file_from_sample_path(self, sample_path, runfolder):
         file_name = os.path.basename(sample_path)
         m = re.match(self.filename_regexp, file_name)
         if not m or len(m.groups()) != 5:
@@ -62,11 +74,18 @@ class RunfolderProjectBasedSampleRepository(object):
         lane_no = int(m.group(3))
         is_index = (str(m.group(4)) == "I")
         read_no = int(m.group(5))
+        try:
+            checksum = self.checksum_from_sample_path(sample_path, runfolder)
+        except ChecksumNotFoundException as e:
+            log.info(e)
+            checksum = None
+
         return SampleFile(
             sample_path,
             sample_name=sample_name,
             sample_index=sample_index,
             lane_no=lane_no,
             read_no=read_no,
-            is_index=is_index)
+            is_index=is_index,
+            checksum=checksum)
 

@@ -2,6 +2,7 @@
 import logging
 
 from arteria.web.handlers import BaseRestHandler
+from delivery.handlers import OK, INTERNAL_SERVER_ERROR
 
 log = logging.getLogger(__name__)
 
@@ -57,16 +58,14 @@ class OrganiseRunfolderHandler(BaseOrganiseHandler):
         if any([force, lanes, projects]):
             log.debug(
                 "Got the following 'force', 'lanes' and 'projects' attributes to organise: {}".format(
-                [force, lanes, projects]))
+                    [force, lanes, projects]))
 
         try:
-            organised_path = self.organise_service.organise_runfolder(runfolder_id, lanes, projects, force)
+            organised_runfolder = self.organise_service.organise_runfolder(runfolder_id, lanes, projects, force)
 
             self.set_status(OK)
-            self.write_json({"organised_path": organised_path})
+            self.write_json({"organised_path": organised_runfolder.path})
 
-        except ProjectNotFoundException as e:
-            self.set_status(NOT_FOUND, reason=str(e))
-        except ProjectAlreadyDeliveredException as e:
-            self.set_status(FORBIDDEN, reason=str(e))
+        except Exception as e:
+            self.set_status(INTERNAL_SERVER_ERROR, reason=str(e))
 
