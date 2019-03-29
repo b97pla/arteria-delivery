@@ -3,7 +3,6 @@ import os
 import unittest
 
 from delivery.exceptions import ProjectAlreadyOrganisedException
-from delivery.models.sample import Sample, SampleFile
 from delivery.repositories.project_repository import GeneralProjectRepository
 from delivery.repositories.sample_repository import RunfolderProjectBasedSampleRepository
 from delivery.services.file_system_service import FileSystemService
@@ -43,25 +42,29 @@ class TestOrganiseService(unittest.TestCase):
 
     def test_organise_project_already_organised(self):
         self.file_system_service.exists.return_value = True
+        with mock.patch.object(self.organise_service, "symlink_project_report", autospec=True) as symlink_report_mock:
+            # without force
+            self.assertRaises(
+                ProjectAlreadyOrganisedException,
+                self.organise_service.organise_project,
+                self.runfolder, self.project, [], False)
 
-        # without force
-        self.assertRaises(
-            ProjectAlreadyOrganisedException,
-            self.organise_service.organise_project,
-            self.runfolder, self.project, [], False)
-
-        # with force
-        organised_path = os.path.join(self.project.runfolder_path, "Projects")
-        self.sample_repository.get_samples.return_value = []
-        self.organise_service.organise_project(self.runfolder, self.project, [], True)
-        self.file_system_service.rename.assert_called_once()
-        self.assertEqual(organised_path, self.file_system_service.rename.call_args[0][0])
-        self.assertRegex(
-            self.file_system_service.rename.call_args[0][1],
-            "{}\\.\\d+\\.\\d+".format(organised_path))
+            # with force
+            organised_path = os.path.join(self.project.runfolder_path, "Projects")
+            self.sample_repository.get_samples.return_value = []
+            self.organise_service.organise_project(self.runfolder, self.project, [], True)
+            self.file_system_service.rename.assert_called_once()
+            self.assertEqual(organised_path, self.file_system_service.rename.call_args[0][0])
+            self.assertRegex(
+                self.file_system_service.rename.call_args[0][1],
+                "{}\\.\\d+\\.\\d+".format(organised_path))
+            self.assertEqual(1, symlink_report_mock.call_count)
 
     def test_organise_project(self):
-        with mock.patch.object(self.organise_service, "organise_sample", autospec=True) as organise_sample_mock:
+        with mock.patch.object(
+                self.organise_service, "organise_sample", autospec=True) as organise_sample_mock, \
+                mock.patch.object(
+                    self.organise_service, "symlink_project_report", autospec=True) as symlink_report_mock:
             lanes = [1, 2, 3]
             force = True
             self.organise_service.organise_project(self.runfolder, self.project, lanes, force)
@@ -71,10 +74,12 @@ class TestOrganiseService(unittest.TestCase):
                         sample,
                         self.organised_project_path,
                         lanes)])
+            self.assertEqual(1, symlink_report_mock.call_count)
 
     def test_organise_sample(self):
         # relative symlinks should be created with the correct arguments
         self.file_system_service.relpath.side_effect = os.path.relpath
+        self.file_system_service.dirname.side_effect = os.path.dirname
         for sample in self.project.samples:
             organised_sample = self.organise_service.organise_sample(sample, self.organised_project_path, [])
             sample_file_dir = os.path.relpath(

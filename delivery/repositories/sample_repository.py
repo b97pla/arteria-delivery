@@ -27,10 +27,11 @@ class RunfolderProjectBasedSampleRepository(object):
             return re.match(self.filename_regexp, f) is not None
 
         def _name_from_sample_file(s):
-            return s.sample_name
+            subdir = self.file_system_service.relpath(os.path.dirname(s.sample_path), project.path)
+            return s.sample_name, subdir if subdir != "." else None
 
-        def _sample_from_name(n):
-            return Sample(n, project.name)
+        def _sample_from_name(name_id):
+            return Sample(name_id[0], project.name, sample_id=name_id[1])
 
         def _sample_file_from_path(p):
             return self.sample_file_from_sample_path(p, runfolder)
@@ -88,4 +89,9 @@ class RunfolderProjectBasedSampleRepository(object):
             read_no=read_no,
             is_index=is_index,
             checksum=checksum)
+
+    @staticmethod
+    def sample_lanes(sample):
+        return list(set([
+            sample_file.lane_no for sample_file in sample.sample_files]))
 

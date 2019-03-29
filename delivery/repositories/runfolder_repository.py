@@ -132,18 +132,6 @@ class FileSystemBasedRunfolderRepository(object):
     def get_samplesheet(self, runfolder):
         return self.file_system_service.extract_samplesheet_data(self.samplesheet_file(runfolder))
 
-    def dump_project_samplesheet(self, runfolder, project):
-
-        def _samplesheet_entry_in_project(e):
-            # TODO: check also lane, sample and index
-            return e.get("Sample_Project") == project.name
-
-        samplesheet_data = self.get_samplesheet(runfolder)
-        project_samplesheet_data = list(filter(_samplesheet_entry_in_project, samplesheet_data))
-        project_samplesheet_file = os.path.join(project.path, self.SAMPLESHEET_PATH)
-        self.file_system_service.write_samplesheet_file(project_samplesheet_file, project_samplesheet_data)
-        return project_samplesheet_file
-
 
 class FileSystemBasedUnorganisedRunfolderRepository(FileSystemBasedRunfolderRepository):
 
@@ -159,3 +147,23 @@ class FileSystemBasedUnorganisedRunfolderRepository(FileSystemBasedRunfolderRepo
 
     def dump_project_checksums(self, project):
         return self.project_repository.dump_checksums(project)
+
+    def dump_project_samplesheet(self, runfolder, project):
+
+        def _samplesheet_entry_in_project(e):
+            return all([
+                e.get("Sample_Project") == project.name,
+                e.get("Sample_ID") in [
+                    sample.sample_id for sample in project.samples],
+                int(e.get("Lane")) in [
+                    lane for sample in project.samples for lane in self.sample_repository.sample_lanes(sample)]])
+
+        samplesheet_data = self.get_samplesheet(runfolder)
+        project_samplesheet_data = list(filter(_samplesheet_entry_in_project, samplesheet_data))
+        project_samplesheet_file = os.path.join(project.path, self.SAMPLESHEET_PATH)
+        self.file_system_service.write_samplesheet_file(project_samplesheet_file, project_samplesheet_data)
+        return project_samplesheet_file
+
+    def get_project_report_files(self, project):
+        return self.project_repository.get_report_files(project)
+

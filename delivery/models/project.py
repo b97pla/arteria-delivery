@@ -46,6 +46,9 @@ class RunfolderProject(BaseProject):
                 "runfolder_name": self.runfolder_name,
                 "samples": self.samples}
 
+    def __eq__(self, other):
+        return super().__eq__(other) and other.samples == self.samples
+
 
 class GeneralProject(BaseProject):
     """

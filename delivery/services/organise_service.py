@@ -43,14 +43,12 @@ class OrganiseService(object):
         organised_projects = []
         for project in projects_on_runfolder:
             try:
-                organised_project = self.organise_project(
-                    runfolder,
-                    project,
-                    lanes,
-                    force)
-                self.runfolder_service.dump_project_checksums(organised_project)
-                self.runfolder_service.dump_project_samplesheet(runfolder, organised_project)
-                organised_projects.append(organised_project)
+                organised_projects.append(
+                    self.organise_project(
+                        runfolder,
+                        project,
+                        lanes,
+                        force))
             except ProjectAlreadyOrganisedException as e:
                 log.info(e)
                 log.info("no re-organisation of {} was attempted".format(project.name))
@@ -84,12 +82,37 @@ class OrganiseService(object):
                     sample,
                     organised_project_runfolder_path,
                     lanes))
-        return RunfolderProject(
+        organised_project = RunfolderProject(
             project.name,
             organised_project_path,
             runfolder.path,
             runfolder.name,
             samples=organised_samples)
+        self.symlink_project_report(project, organised_project)
+        self.runfolder_service.dump_project_checksums(organised_project)
+        self.runfolder_service.dump_project_samplesheet(runfolder, organised_project)
+        return organised_project
+
+    def symlink_project_report(self, project, organised_project):
+        project_report_base, project_report_files = self.runfolder_service.get_project_report_files(project)
+
+        def _link_name(target_file):
+            return os.path.join(
+                organised_project.path,
+                self.file_system_service.relpath(
+                    target_file,
+                    project_report_base))
+
+        def _link_path(target_file, link_name):
+            return self.file_system_service.relpath(
+                target_file,
+                self.file_system_service.dirname(link_name)
+            )
+
+        for project_report_file in project_report_files:
+            link_name = _link_name(project_report_file)
+            link_path = _link_path(project_report_file, link_name)
+            self.file_system_service.symlink(link_path, link_name)
 
     def organise_sample(self, sample, organised_project_path, lanes):
 
@@ -97,7 +120,7 @@ class OrganiseService(object):
             return not lanes or f.lane_no in lanes
 
         # symlink each sample in its own directory
-        organised_sample_path = os.path.join(organised_project_path, sample.name)
+        organised_sample_path = os.path.join(organised_project_path, sample.sample_id)
 
         # filter the files if lanes should be excluded
         sample_files_to_symlink = list(filter(_include_sample_file, sample.sample_files))
@@ -108,7 +131,9 @@ class OrganiseService(object):
         organised_sample_files = []
         for sample_file in sample_files_to_symlink:
             link_name = os.path.join(organised_sample_path, sample_file.file_name)
-            relative_path = self.file_system_service.relpath(sample_file.sample_path, os.path.dirname(link_name))
+            relative_path = self.file_system_service.relpath(
+                sample_file.sample_path,
+                self.file_system_service.dirname(link_name))
             self.file_system_service.symlink(relative_path, link_name)
             organised_sample_files.append(
                 SampleFile(
@@ -122,4 +147,5 @@ class OrganiseService(object):
         return Sample(
             name=sample.name,
             project_name=sample.project_name,
+            sample_id=sample.sample_id,
             sample_files=organised_sample_files)

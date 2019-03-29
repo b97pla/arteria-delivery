@@ -49,7 +49,7 @@ def _item_generator(prefix=None, suffix=None):
 
 
 def sample_name_generator():
-    yield from _item_generator(prefix="Sample_")
+    yield from _item_generator(prefix="MockSample_")
 
 
 def sample_index_generator():
@@ -62,8 +62,10 @@ def lane_generator():
 
 def project_sample(project, sample_name, sample_index, lane_no, subdir=False):
     sample_files = []
+    sample_id = None
     if subdir:
-        sample_dir = os.path.join(project.path, sample_name)
+        sample_id = "{}_id".format(sample_name)
+        sample_dir = os.path.join(project.path, sample_id)
     else:
         sample_dir = project.path
     for is_index in [False, True]:
@@ -88,6 +90,7 @@ def project_sample(project, sample_name, sample_index, lane_no, subdir=False):
     return Sample(
         name=sample_name,
         project_name=project.name,
+        sample_id=sample_id,
         sample_files=sample_files
     )
 
@@ -121,10 +124,11 @@ def runfolder_project(
     samples.append(sample)
 
     # a sample with two preps on two lanes and sample files in subdirectories
+    sample_name = next(sample_names)
     t_samples = [
         project_sample(
             project,
-            sample_name="Sample_3",
+            sample_name=sample_name,
             sample_index=si,
             lane_no=l,
             subdir=True)
@@ -151,9 +155,9 @@ def unorganised_runfolder(name="180124_A00181_0019_BH72M5DMXX", root_path="/foo"
     for project in runfolder.projects:
         for sample in project.samples:
             for sample_file in sample.sample_files:
-                checksums[sample_file.checksum] = os.path.relpath(
+                checksums[os.path.relpath(
                     sample_file.sample_path,
-                    os.path.dirname(runfolder.path))
+                    os.path.dirname(runfolder.path))] = sample_file.checksum
     runfolder.checksums = checksums
     return runfolder
 
@@ -179,7 +183,7 @@ def samplesheet_data_for_runfolder(runfolder):
                             samplesheet_data_headers,
                             [
                                 str(sample_file.lane_no),
-                                sample_file.sample_id,
+                                sample.sample_id,
                                 sample_file.sample_name,
                                 str(),
                                 str(),
@@ -223,6 +227,19 @@ AdapterRead2,,,,,,,,
         writer.writeheader()
         writer.writerows(samplesheet_data)
     return samplesheet_file, samplesheet_data
+
+
+def project_report_files(project, multiqc_report=True):
+    if multiqc_report:
+        report_dir = project.path
+        report_files = [os.path.join(report_dir, "{}_multiqc_report.html".format(project.name)),
+                        os.path.join(report_dir, "{}_multiqc_report_data.zip".format(project.name))]
+        return report_dir, report_files
+    report_dir = os.path.join(project.runfolder_path, "Summary", project.name)
+    report_files = list(map(lambda f: os.path.join(report_dir, "report.{}".format(f)), ["html", "xml", "xsl"]))
+    report_files.append(os.path.join(report_dir, "Plots", "file_in_plots.png"))
+    report_files.append(os.path.join(report_dir, "Plots", "subdir", "file_in_plots_subdir"))
+    return report_dir, report_files
 
 
 _runfolder1 = Runfolder(name="160930_ST-E00216_0111_BH37CWALXX",

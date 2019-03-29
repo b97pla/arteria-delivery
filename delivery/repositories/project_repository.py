@@ -4,7 +4,7 @@ import os
 
 from delivery.services.file_system_service import FileSystemService
 from delivery.models.project import GeneralProject, RunfolderProject
-from delivery.exceptions import TooManyProjectsFound, ProjectNotFoundException
+from delivery.exceptions import TooManyProjectsFound, ProjectNotFoundException, ProjectReportNotFoundException
 
 log = logging.getLogger(__name__)
 
@@ -115,3 +115,45 @@ class UnorganisedRunfolderProjectRepository(object):
         except FileNotFoundError:
             log.warning("Did not find Unaligned folder for: {}".format(runfolder.name))
             pass
+
+    def get_report_files(self, project):
+        if self.filesystem_service.exists(self.multiqc_report_path(project)):
+            return self.multiqc_report_files(project)
+        for sisyphus_report_path in self.sisyphus_report_path(project):
+            if self.filesystem_service.exists(sisyphus_report_path):
+                return self.sisyphus_report_files(
+                    self.filesystem_service.dirname(sisyphus_report_path))
+        raise ProjectReportNotFoundException("No project report found for {}".format(project.name))
+
+    @staticmethod
+    def sisyphus_report_path(project):
+        return os.path.join(
+            project.runfolder_path, "Summary", project.name, "report.html"), \
+               os.path.join(
+                   project.path, "report.html")
+
+    def sisyphus_report_files(self, report_dir):
+        report_files = [
+            os.path.join(report_dir, "report.html"),
+            os.path.join(report_dir, "report.xml"),
+            os.path.join(report_dir, "report.xsl")
+        ]
+        report_files.extend(list(
+            self.filesystem_service.list_files_recursively(
+                os.path.join(
+                    report_dir,
+                    "Plots"))))
+        return report_dir, report_files
+
+    @staticmethod
+    def multiqc_report_path(project):
+        return os.path.join(
+            project.path,
+            "{}_multiqc_report.html".format(project.name))
+
+    def multiqc_report_files(self, project):
+        report_files = [self.multiqc_report_path(project)]
+        report_dir = self.filesystem_service.dirname(report_files[0])
+        report_files.append(
+            os.path.join(report_dir, "{}_multiqc_report_data.zip".format(project.name)))
+        return report_dir, report_files
