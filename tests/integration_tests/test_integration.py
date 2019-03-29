@@ -14,7 +14,8 @@ from delivery.app import routes as app_routes, compose_application
 from delivery.models.db_models import StagingStatus, DeliveryStatus
 from delivery.services.file_system_service import FileSystemService
 
-from tests.test_utils import assert_eventually_equals, unorganised_runfolder, samplesheet_file_from_runfolder
+from tests.test_utils import assert_eventually_equals, unorganised_runfolder, samplesheet_file_from_runfolder, \
+    project_report_files
 
 
 class TestPythonVersion(unittest.TestCase):
@@ -49,14 +50,29 @@ class TestIntegration(AsyncHTTPTestCase):
 
     @staticmethod
     def _create_runfolder_structure_on_disk(runfolder):
+
+        def _toggle():
+            state = True
+            while True:
+                yield state
+                state = not state
+
+        def _touch_file(file_path):
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            with open(file_path, 'wb') as f:
+                f.write(os.urandom(1024))
+
+        report_type = _toggle()
         os.makedirs(runfolder.path, exist_ok=True)
         for project in runfolder.projects:
             os.makedirs(project.path)
             for sample in project.samples:
                 for sample_file in sample.sample_files:
-                    os.makedirs(os.path.dirname(sample_file.sample_path), exist_ok=True)
-                    with open(sample_file.sample_path, 'wb') as f:
-                        f.write(os.urandom(1024))
+                    _touch_file(sample_file.sample_path)
+            report_dir, report_files = project_report_files(project, multiqc_report=next(report_type))
+            for report_file in report_files:
+                _touch_file(report_file)
+
         checksum_file = os.path.join(runfolder.path, "MD5", "checksums.md5")
         os.mkdir(os.path.dirname(checksum_file))
         FileSystemService.write_checksum_file(checksum_file, runfolder.checksums)

@@ -4,7 +4,7 @@ import os
 
 from delivery.services.file_system_service import FileSystemService
 from delivery.models.project import GeneralProject, RunfolderProject
-from delivery.exceptions import TooManyProjectsFound, ProjectNotFoundException
+from delivery.exceptions import TooManyProjectsFound, ProjectNotFoundException, ProjectReportNotFoundException
 
 log = logging.getLogger(__name__)
 

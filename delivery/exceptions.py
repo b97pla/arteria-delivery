@@ -22,6 +22,13 @@ class ProjectNotFoundException(Exception):
     pass
 
 
+class ProjectReportNotFoundException(Exception):
+    """
+    Should be raised when and invalid or non-existent project is searched for.
+    """
+    pass
+
+
 class TooManyProjectsFound(Exception):
     """
     Should be raise when to many projects match some specific criteria

@@ -14,46 +14,20 @@ class TestSampleRepository(unittest.TestCase):
     def setUp(self):
         self.runfolder = test_utils.UNORGANISED_RUNFOLDER
         self.project = self.runfolder.projects[0]
-        no_samples = 3
-        sample_names = ["Sample{}".format(str(i)) for i in range(no_samples)]
-        sample_index = ["S{}".format(str(i)) for i in range(no_samples)]
-        lane_no = [1, 2, 3]
-        is_index = [False, True]
-        read_no = [1, 2]
-        sample_paths = [
-            os.path.join(self.project.path, "Sample_{}".format(sample_names[0])),
-            self.project.path,
-            os.path.join(self.project.path, sample_names[2])
-        ]
-        self.fastq_files = []
-        self.runfolder.checksums = dict()
-        for i in range(no_samples):
-            for ii in is_index:
-                for r in read_no:
-                    file_name = "_".join([
-                        sample_names[i],
-                        sample_index[i],
-                        "L00{}".format(str(lane_no[i])),
-                        "{}{}".format(
-                            "I" if ii else "R",
-                            str(r)
-                        ),
-                        "001.fastq.gz"])
-                    self.fastq_files.append(os.path.join(sample_paths[i], file_name))
-                    self.runfolder.checksums[
-                        os.path.relpath(
-                            self.fastq_files[-1],
-                            os.path.dirname(
-                                self.runfolder.path))] = "checksum-{}-{}-{}".format(
-                        str(i), str(ii), str(r))
+        self.fastq_files = [
+            sample_file.sample_path for sample in self.project.samples for sample_file in sample.sample_files]
+        self.runfolder.checksums = {
+            os.path.relpath(
+                sample_file.sample_path,
+                os.path.dirname(self.runfolder.path)): sample_file.checksum
+            for sample in self.project.samples for sample_file in sample.sample_files}
         self.file_system_service = test_utils.mock_file_system_service([], [], fastq_files=self.fastq_files)
         self.sample_repo = RunfolderProjectBasedSampleRepository(file_system_service=self.file_system_service)
 
     def test_get_samples(self):
         self.file_system_service.relpath.side_effect = os.path.relpath
         for sample in self.sample_repo.get_samples(self.project, self.runfolder):
-            self.assertEqual(self.project.name, sample.project_name)
-            self.assertEqual(4, len(sample.sample_files))
+            self.assertIn(sample, self.project.samples)
 
     def test_sample_file_from_sample_path_bad(self):
         bad_filenames = [

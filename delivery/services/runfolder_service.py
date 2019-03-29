@@ -54,3 +54,6 @@ class RunfolderService(object):
 
     def dump_project_samplesheet(self, runfolder, project):
         return self.runfolder_repo.dump_project_samplesheet(runfolder, project)
+
+    def get_project_report_files(self, project):
+        return self.runfolder_repo.get_project_report_files(project)
