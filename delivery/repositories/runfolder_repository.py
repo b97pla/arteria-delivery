@@ -134,8 +134,19 @@ class FileSystemBasedRunfolderRepository(object):
 
 
 class FileSystemBasedUnorganisedRunfolderRepository(FileSystemBasedRunfolderRepository):
+    """
+    A subclass of `FileSystemBasedRunfolderRepository` providing functionality for a unorganised runfolder
+    """
 
     def __init__(self, base_path, project_repository, sample_repository, file_system_service=FileSystemService()):
+        """
+        Instantiate a new `FileSystemBasedUnorganisedRunfolderRepository` object.
+
+        :param base_path: the directory where runfolders are stored
+        :param project_repository: an instance of UnorganisedRunfolderProjectRepository
+        :param sample_repository: an instance of RunfolderProjectBasedSampleRepository
+        :param file_system_service: a service which can access the file system
+        """
         super(FileSystemBasedUnorganisedRunfolderRepository, self).__init__(
             base_path,
             file_system_service=file_system_service)
@@ -146,11 +157,32 @@ class FileSystemBasedUnorganisedRunfolderRepository(FileSystemBasedRunfolderRepo
         runfolder.projects = self.project_repository.get_projects(runfolder, self.sample_repository)
 
     def dump_project_checksums(self, project):
+        """
+        Calls the `UnorganisedRunfolderProjectRepository` instance associated with this repository to dump out
+        checksums for files relevant to the supplied project to a file under the project path.
+
+        :param project: an instance of Project
+        :return: the path to the created checksum file
+        """
         return self.project_repository.dump_checksums(project)
 
     def dump_project_samplesheet(self, runfolder, project):
+        """
+        Parses the SampleSheet from the supplied runfolder and extracts the rows in the [Data] section relevant to
+        the samples in the supplied project. The extracted data are written to a samplesheet file under the project
+        path.
 
+        :param runfolder: an instance of Runfolder
+        :param project: an instance of Project
+        :return: the path to the created SampleSheet file
+        """
         def _samplesheet_entry_in_project(e):
+            """
+            Checks if a samplesheet row matches the project w.r.t.:
+                * project name
+                * sample id in project
+                * lane in project samples
+            """
             return all([
                 e.get("Sample_Project") == project.name,
                 e.get("Sample_ID") in [
@@ -165,5 +197,12 @@ class FileSystemBasedUnorganisedRunfolderRepository(FileSystemBasedRunfolderRepo
         return project_samplesheet_file
 
     def get_project_report_files(self, project):
+        """
+        Calls the `UnorganisedRunfolderProjectRepository` instance associated with this repository to collect
+        paths to report files relevant to the supplied project.
+
+        :param project: an instance of Project
+        :return: a tuple with the path to the directory containing the report and a list of paths to the report files
+        """
         return self.project_repository.get_report_files(project)
 

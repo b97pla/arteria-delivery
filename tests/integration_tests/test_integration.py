@@ -138,6 +138,45 @@ class TestIntegration(AsyncHTTPTestCase):
             response_json = json.loads(response.body)
 
             print(response_json)
+            for project in runfolder.projects:
+                organised_path = os.path.join(runfolder.path, "Projects", project.name)
+                self.assertTrue(os.path.exists(organised_path))
+                for f in "SampleSheet.csv", "checksums.md5":
+                    self.assertTrue(os.path.exists(os.path.join(organised_path, f)))
+                report_files = [
+                    os.path.join(organised_path, l) for l in (
+                        "report.html",
+                        "{}_multiqc_report.html".format(project.name))]
+                if os.path.exists(report_files[0]):
+                    self.assertTrue(
+                        os.path.samefile(
+                            os.path.join(
+                                runfolder.path,
+                                "Summary",
+                                project.name,
+                                os.path.basename(report_files[0])),
+                            report_files[0]))
+                elif os.path.exists(report_files[1]):
+                    self.assertTrue(
+                        os.path.samefile(
+                            os.path.join(
+                                project.path,
+                                os.path.basename(report_files[1])),
+                            report_files[1]))
+                else:
+                    raise AssertionError("Report files not properly linked")
+                self.assertTrue(
+                    any(
+                        map(
+                            lambda l: os.path.exists(os.path.join(organised_path, l)),
+                            ["report.html", "{}_multiqc_report.html".format(project.name)])))
+                for sample in project.samples:
+                    sample_path = os.path.join(organised_path, runfolder.name, sample.sample_id)
+                    self.assertTrue(os.path.exists(sample_path))
+                    for sample_file in sample.sample_files:
+                        organised_file_path = os.path.join(sample_path, sample_file.file_name)
+                        self.assertTrue(os.path.exists(organised_file_path))
+                        self.assertTrue(os.path.samefile(sample_file.sample_path, organised_file_path))
 
     def test_can_stage_and_delivery_runfolder(self):
         # Note that this is a test which skips mover (since to_outbox is not expected to be installed on the system

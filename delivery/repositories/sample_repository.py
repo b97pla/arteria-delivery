@@ -12,6 +12,10 @@ log = logging.getLogger(__name__)
 
 
 class RunfolderProjectBasedSampleRepository(object):
+    """
+    Repository for a unorganised project in a runfolder. For this purpose a project is represented by a directory under
+    the runfolder's PROJECTS_DIR directory, having at least one fastq file beneath it.
+    """
 
     filename_regexp = r'^(.+)_(S\d+)_L00(\d+)_([IR])(\d)_\d+\.fastq\.gz$'
 
@@ -19,6 +23,13 @@ class RunfolderProjectBasedSampleRepository(object):
         self.file_system_service = file_system_service
 
     def get_samples(self, project, runfolder):
+        """
+        Parse the supplied project directory and create Sample instances representing the samples in the project.
+
+        :param project: a Project instance
+        :param runfolder: a Runfolder instance
+        :return: a list of Sample instances
+        """
         return self._get_samples(project, runfolder)
 
     def _get_samples(self, project, runfolder):
@@ -57,15 +68,33 @@ class RunfolderProjectBasedSampleRepository(object):
             yield project_sample
 
     def checksum_from_sample_path(self, sample_path, runfolder):
+        """
+        Get the pre-calculated checksum for an unorganised sample path from the checksums associated with the
+        supplied Runfolder instance.
+
+        :param sample_path: path to the file
+        :param runfolder: a Runfolder instance with associated checksums
+        :return: the pre-calculated MD5 checksum for the sample_path
+        :raises ChecksumNotFoundException: if the runfolder object does not have a checksum associated with the
+        supplied path
+        """
         relative_path = self.file_system_service.relpath(
             sample_path,
-            os.path.dirname(runfolder.path))
+            self.file_system_service.dirname(runfolder.path))
         try:
             return runfolder.checksums[relative_path]
         except (KeyError, TypeError):
             raise ChecksumNotFoundException("no pre-calculated checksum could be found for '{}'".format(relative_path))
 
     def sample_file_from_sample_path(self, sample_path, runfolder):
+        """
+        Create a SampleFile instance from the supplied path. Attributes will be parsed from elements in the file name
+        and path.
+
+        :param sample_path: path to a sample sequence file
+        :param runfolder: a Runfolder instance
+        :return: a SampleFile instance
+        """
         file_name = os.path.basename(sample_path)
         m = re.match(self.filename_regexp, file_name)
         if not m or len(m.groups()) != 5:

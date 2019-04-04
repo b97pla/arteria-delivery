@@ -55,6 +55,10 @@ class GeneralProjectRepository(object):
 
 
 class UnorganisedRunfolderProjectRepository(object):
+    """
+    Repository for a unorganised project in a runfolder. For this purpose a project is represented by a directory under
+    the runfolder's PROJECTS_DIR directory, having at least one fastq file beneath it.
+    """
 
     PROJECTS_DIR = "Unaligned"
 
@@ -62,6 +66,12 @@ class UnorganisedRunfolderProjectRepository(object):
         self.filesystem_service = filesystem_service
 
     def dump_checksums(self, project):
+        """
+        Writes checksums for files relevant to the supplied project to a file under the project path.
+
+        :param project: an instance of Project
+        :return: the path to the created checksum file
+        """
 
         def _sample_file_checksum(sample_file):
             return [
@@ -82,7 +92,13 @@ class UnorganisedRunfolderProjectRepository(object):
         return checksum_path
 
     def get_projects(self, runfolder, sample_repository):
+        """
+        Returns a list of RunfolderProject instances, representing all projects found in this runfolder.
 
+        :param runfolder: a Runfolder instance
+        :param sample_repository: a RunfolderProjectBasedSampleRepository instance
+        :return: a list of RunfolderProject instances or None if no projects were found
+        """
         def dir_contains_fastq_files(d):
             return any(
                 map(
@@ -117,6 +133,15 @@ class UnorganisedRunfolderProjectRepository(object):
             pass
 
     def get_report_files(self, project):
+        """
+        Gets the paths to files associated with the supplied project's report. This can be either a MultiQC report or,
+        if no such report was found, a Sisyphus report.
+
+        :param project: a RunfolderProject instance
+        :return: a tuple with the path to the directory containing the report files and a list of the paths to the
+        report files
+        :raises ProjectReportNotFoundException: if no MultiQC or Sisyphus report was found for the project
+        """
         if self.filesystem_service.exists(self.multiqc_report_path(project)):
             return self.multiqc_report_files(project)
         for sisyphus_report_path in self.sisyphus_report_path(project):

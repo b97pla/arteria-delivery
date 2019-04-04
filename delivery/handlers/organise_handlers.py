@@ -13,7 +13,7 @@ class BaseOrganiseHandler(BaseRestHandler):
 
 class OrganiseRunfolderHandler(BaseOrganiseHandler):
     """
-    Handler class for handling how to start staging of a runfolder.
+    Handler class for handling how to organise a runfolder in preparation for staging and delivery
     """
 
     def initialize(self, organise_service, **kwargs):
@@ -21,16 +21,16 @@ class OrganiseRunfolderHandler(BaseOrganiseHandler):
 
     def post(self, runfolder_id):
         """
-        Attempt to stage projects from the the specified runfolder, so that they can then be delivered.
-        Will return a set of status links, one for each project that can be queried for the status of
-        that staging attempt. A list of project names can be specified in the request body to limit which projects
-        should be staged. E.g:
+        Attempt to organise projects from the the specified runfolder, so that they can then be staged and delivered.
+        A list of project names and/or lane numbers can be specified in the request body to limit which projects
+        and lanes should be organised. A force flag indicating that previously organised projects should be replaced
+        can also be specified. E.g:
 
             import requests
 
-            url = "http://localhost:8080/api/1.0/stage/runfolder/160930_ST-E00216_0111_BH37CWALXX"
+            url = "http://localhost:8080/api/1.0/organise/runfolder/160930_ST-E00216_0111_BH37CWALXX"
 
-            payload = "{'projects': ['ABC_123']}"
+            payload = "{'projects': ['ABC_123'], 'lanes': [1, 2, 4], 'force': True}"
             headers = {
                 'content-type': "application/json",
             }
@@ -40,7 +40,7 @@ class OrganiseRunfolderHandler(BaseOrganiseHandler):
             print(response.text)
 
         The return format looks like:
-            {"staging_order_links": {"ABC_123": "http://localhost:8080/api/1.0/stage/584"}}
+            {"organised_path": "/path/to/organised/runfolder/160930_ST-E00216_0111_BH37CWALXX"}
 
         """
 
