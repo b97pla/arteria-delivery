@@ -276,7 +276,7 @@ def assert_eventually_equals(self, timeout, f, expected, delay=0.1):
     while True:
         try:
             value = f()
-            self.assertEquals(value, expected)
+            self.assertEqual(value, expected)
             break
         except AssertionError:
             if time.time() - start_time <= timeout:

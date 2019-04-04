@@ -64,7 +64,9 @@ class OrganiseRunfolderHandler(BaseOrganiseHandler):
             organised_runfolder = self.organise_service.organise_runfolder(runfolder_id, lanes, projects, force)
 
             self.set_status(OK)
-            self.write_json({"organised_path": organised_runfolder.path})
+            self.write_json({
+                "runfolder": organised_runfolder.path,
+                "projects": [project.name for project in organised_runfolder.projects]})
 
         except Exception as e:
             self.set_status(INTERNAL_SERVER_ERROR, reason=str(e))

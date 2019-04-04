@@ -136,8 +136,11 @@ class TestIntegration(AsyncHTTPTestCase):
             self.assertEqual(response.code, 200)
 
             response_json = json.loads(response.body)
+            self.assertDictEqual(
+                {"runfolder": runfolder.path,
+                 "projects": [project.name for project in runfolder.projects]},
+                response_json)
 
-            print(response_json)
             for project in runfolder.projects:
                 organised_path = os.path.join(runfolder.path, "Projects", project.name)
                 self.assertTrue(os.path.exists(organised_path))
