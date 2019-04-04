@@ -117,10 +117,12 @@ def compose_application(config):
     _assert_is_dir(project_links_directory)
 
     runfolder_repo = FileSystemBasedRunfolderRepository(runfolder_dir)
+    project_repository = UnorganisedRunfolderProjectRepository(
+        sample_repository=RunfolderProjectBasedSampleRepository()
+    )
     unorganised_runfolder_repo = FileSystemBasedUnorganisedRunfolderRepository(
         runfolder_dir,
-        project_repository=UnorganisedRunfolderProjectRepository(),
-        sample_repository=RunfolderProjectBasedSampleRepository()
+        project_repository=project_repository
     )
 
     general_project_dir = config['general_project_directory']

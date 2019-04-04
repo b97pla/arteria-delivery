@@ -138,23 +138,21 @@ class FileSystemBasedUnorganisedRunfolderRepository(FileSystemBasedRunfolderRepo
     A subclass of `FileSystemBasedRunfolderRepository` providing functionality for a unorganised runfolder
     """
 
-    def __init__(self, base_path, project_repository, sample_repository, file_system_service=FileSystemService()):
+    def __init__(self, base_path, project_repository, file_system_service=FileSystemService()):
         """
         Instantiate a new `FileSystemBasedUnorganisedRunfolderRepository` object.
 
         :param base_path: the directory where runfolders are stored
         :param project_repository: an instance of UnorganisedRunfolderProjectRepository
-        :param sample_repository: an instance of RunfolderProjectBasedSampleRepository
         :param file_system_service: a service which can access the file system
         """
         super(FileSystemBasedUnorganisedRunfolderRepository, self).__init__(
             base_path,
             file_system_service=file_system_service)
         self.project_repository = project_repository
-        self.sample_repository = sample_repository
 
     def _add_projects_to_runfolder(self, runfolder):
-        runfolder.projects = self.project_repository.get_projects(runfolder, self.sample_repository)
+        runfolder.projects = self.project_repository.get_projects(runfolder)
 
     def dump_project_checksums(self, project):
         """
@@ -183,12 +181,11 @@ class FileSystemBasedUnorganisedRunfolderRepository(FileSystemBasedRunfolderRepo
                 * sample id in project
                 * lane in project samples
             """
-            return all([
-                e.get("Sample_Project") == project.name,
-                e.get("Sample_ID") in [
-                    sample.sample_id for sample in project.samples],
-                int(e.get("Lane")) in [
-                    lane for sample in project.samples for lane in self.sample_repository.sample_lanes(sample)]])
+            return self.project_repository.is_sample_in_project(
+                project,
+                e.get("Sample_Project"),
+                e.get("Sample_ID"),
+                int(e.get("Lane")))
 
         samplesheet_data = self.get_samplesheet(runfolder)
         project_samplesheet_data = list(filter(_samplesheet_entry_in_project, samplesheet_data))

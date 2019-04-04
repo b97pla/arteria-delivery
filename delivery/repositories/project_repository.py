@@ -62,8 +62,15 @@ class UnorganisedRunfolderProjectRepository(object):
 
     PROJECTS_DIR = "Unaligned"
 
-    def __init__(self, filesystem_service=FileSystemService()):
+    def __init__(self, sample_repository, filesystem_service=FileSystemService()):
+        """
+        Instantiate a new UnorganisedRunfolderProjectRepository object
+
+        :param sample_repository: a RunfolderProjectBasedSampleRepository instance
+        :param filesystem_service:  a FileSystemService instance for accessing the file system
+        """
         self.filesystem_service = filesystem_service
+        self.sample_repository = sample_repository
 
     def dump_checksums(self, project):
         """
@@ -91,12 +98,11 @@ class UnorganisedRunfolderProjectRepository(object):
 
         return checksum_path
 
-    def get_projects(self, runfolder, sample_repository):
+    def get_projects(self, runfolder):
         """
         Returns a list of RunfolderProject instances, representing all projects found in this runfolder.
 
         :param runfolder: a Runfolder instance
-        :param sample_repository: a RunfolderProjectBasedSampleRepository instance
         :return: a list of RunfolderProject instances or None if no projects were found
         """
         def dir_contains_fastq_files(d):
@@ -112,7 +118,7 @@ class UnorganisedRunfolderProjectRepository(object):
                 runfolder_path=runfolder.path,
                 runfolder_name=runfolder.name
             )
-            project.samples = sample_repository.get_samples(project, runfolder)
+            project.samples = self.sample_repository.get_samples(project, runfolder)
             return project
 
         try:
@@ -182,3 +188,24 @@ class UnorganisedRunfolderProjectRepository(object):
         report_files.append(
             os.path.join(report_dir, "{}_multiqc_report_data.zip".format(project.name)))
         return report_dir, report_files
+
+    def is_sample_in_project(self, project, sample_project, sample_id, sample_lane):
+        """
+        Checks if a matching sample is present in the project.
+
+        :param project: a Project instance in which to search for a matching sample
+        :param sample_project: the project name of the sample to search for
+        :param sample_id: the sample id of the sample to search for
+        :param sample_lane: the lane the sample to search for was sequenced on
+        :return: True if a matching sample could be found, False otherwise
+        """
+        return all([
+            sample_project == project.name,
+            self.get_sample(project, sample_id),
+            sample_lane in self.sample_repository.sample_lanes(self.get_sample(project, sample_id))])
+
+    @staticmethod
+    def get_sample(project, sample_id):
+        for sample in project.samples:
+            if sample.sample_id == sample_id:
+                return sample
