@@ -8,10 +8,16 @@ class RunfolderNotFoundException(Exception):
 
 
 class ChecksumNotFoundException(Exception):
+    """
+    Should be raised when a file checksum could not be found in the list of checksums
+    """
     pass
 
 
 class ChecksumFileNotFoundException(Exception):
+    """
+    Should be raised when an expected checksum file could not be found
+    """
     pass
 
 
@@ -70,4 +76,11 @@ class FileNameParsingException(Exception):
 
 
 class SamplesheetNotFoundException(Exception):
+    pass
+
+
+class ProjectsDirNotfoundException(Exception):
+    """
+    Should be raised when a directory containing projects could not be found
+    """
     pass

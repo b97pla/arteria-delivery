@@ -4,7 +4,8 @@ import os
 
 from delivery.services.file_system_service import FileSystemService
 from delivery.models.project import GeneralProject, RunfolderProject
-from delivery.exceptions import TooManyProjectsFound, ProjectNotFoundException, ProjectReportNotFoundException
+from delivery.exceptions import TooManyProjectsFound, ProjectNotFoundException, ProjectReportNotFoundException, \
+    ProjectsDirNotfoundException
 
 log = logging.getLogger(__name__)
 
@@ -104,6 +105,7 @@ class UnorganisedRunfolderProjectRepository(object):
 
         :param runfolder: a Runfolder instance
         :return: a list of RunfolderProject instances or None if no projects were found
+        :raises: ProjectsDirNotfoundException if the Unaligned directory could not be found in the runfolder
         """
         def dir_contains_fastq_files(d):
             return any(
@@ -130,13 +132,10 @@ class UnorganisedRunfolderProjectRepository(object):
                 self.filesystem_service.find_project_directories(projects_base_dir)
             )
 
-            # There are scenarios where there are no project directories in the runfolder,
-            # i.e. when fastq files have not yet been divided into projects
             return list(map(project_from_dir, project_directories)) or None
 
         except FileNotFoundError:
-            log.warning("Did not find Unaligned folder for: {}".format(runfolder.name))
-            pass
+            raise ProjectsDirNotfoundException("Did not find Unaligned folder for: {}".format(runfolder.name))
 
     def get_report_files(self, project):
         """

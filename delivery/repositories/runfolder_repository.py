@@ -3,7 +3,6 @@ import logging
 import os
 import re
 
-from delivery.exceptions import ChecksumFileNotFoundException
 from delivery.models.runfolder import Runfolder
 from delivery.models.project import RunfolderProject
 from delivery.services.file_system_service import FileSystemService
@@ -74,10 +73,7 @@ class FileSystemBasedRunfolderRepository(object):
 
                 runfolder = Runfolder(name=name, path=path, projects=None)
                 self._add_projects_to_runfolder(runfolder)
-                try:
-                    self._add_checksums_for_runfolder(runfolder)
-                except ChecksumFileNotFoundException as e:
-                    log.info(e)
+                self._add_checksums_for_runfolder(runfolder)
 
                 yield runfolder
 

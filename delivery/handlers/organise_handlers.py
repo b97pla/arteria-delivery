@@ -2,7 +2,9 @@
 import logging
 
 from arteria.web.handlers import BaseRestHandler
-from delivery.handlers import OK, INTERNAL_SERVER_ERROR
+from delivery.exceptions import ProjectsDirNotfoundException, ChecksumFileNotFoundException, FileNameParsingException, \
+    SamplesheetNotFoundException, ProjectReportNotFoundException, ProjectAlreadyOrganisedException
+from delivery.handlers import OK, NOT_FOUND, INTERNAL_SERVER_ERROR, FORBIDDEN
 
 log = logging.getLogger(__name__)
 
@@ -67,7 +69,12 @@ class OrganiseRunfolderHandler(BaseOrganiseHandler):
             self.write_json({
                 "runfolder": organised_runfolder.path,
                 "projects": [project.name for project in organised_runfolder.projects]})
-
-        except Exception as e:
+        except (ProjectsDirNotfoundException,
+                ChecksumFileNotFoundException,
+                SamplesheetNotFoundException,
+                ProjectReportNotFoundException) as e:
+            self.set_status(NOT_FOUND, reason=str(e))
+        except ProjectAlreadyOrganisedException as e:
+            self.set_status(FORBIDDEN, reason=str(e))
+        except (FileNameParsingException, Exception) as e:
             self.set_status(INTERNAL_SERVER_ERROR, reason=str(e))
-
