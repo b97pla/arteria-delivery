@@ -134,6 +134,9 @@ class FileSystemBasedRunfolderRepository(object):
 
 
 class FileSystemBasedUnorganisedRunfolderRepository(FileSystemBasedRunfolderRepository):
+    """
+    A subclass of `FileSystemBasedRunfolderRepository` providing functionality for a unorganised runfolder
+    """
 
     def __init__(self, base_path, project_repository, file_system_service=FileSystemService()):
         """
@@ -152,6 +155,13 @@ class FileSystemBasedUnorganisedRunfolderRepository(FileSystemBasedRunfolderRepo
         runfolder.projects = self.project_repository.get_projects(runfolder)
 
     def dump_project_checksums(self, project):
+        """
+        Calls the `UnorganisedRunfolderProjectRepository` instance associated with this repository to dump out
+        checksums for files relevant to the supplied project to a file under the project path.
+
+        :param project: an instance of Project
+        :return: the path to the created checksum file
+        """
         return self.project_repository.dump_checksums(project)
 
     def dump_project_samplesheet(self, runfolder, project):
@@ -176,14 +186,6 @@ class FileSystemBasedUnorganisedRunfolderRepository(FileSystemBasedRunfolderRepo
                 e.get("Sample_Project"),
                 e.get("Sample_ID"),
                 int(e.get("Lane")))
-
-        def _samplesheet_entry_in_project(e):
-            return all([
-                e.get("Sample_Project") == project.name,
-                e.get("Sample_ID") in [
-                    sample.sample_id for sample in project.samples],
-                int(e.get("Lane")) in [
-                    lane for sample in project.samples for lane in self.sample_repository.sample_lanes(sample)]])
 
         samplesheet_data = self.get_samplesheet(runfolder)
         project_samplesheet_data = list(filter(_samplesheet_entry_in_project, samplesheet_data))

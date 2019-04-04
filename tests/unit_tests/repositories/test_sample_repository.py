@@ -26,6 +26,7 @@ class TestSampleRepository(unittest.TestCase):
 
     def test_get_samples(self):
         self.file_system_service.relpath.side_effect = os.path.relpath
+        self.file_system_service.dirname = os.path.dirname
         for sample in self.sample_repo.get_samples(self.project, self.runfolder):
             self.assertIn(sample, self.project.samples)
 

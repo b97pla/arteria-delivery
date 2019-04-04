@@ -55,6 +55,10 @@ class GeneralProjectRepository(object):
 
 
 class UnorganisedRunfolderProjectRepository(object):
+    """
+    Repository for a unorganised project in a runfolder. For this purpose a project is represented by a directory under
+    the runfolder's PROJECTS_DIR directory, having at least one fastq file beneath it.
+    """
 
     PROJECTS_DIR = "Unaligned"
 
@@ -69,6 +73,12 @@ class UnorganisedRunfolderProjectRepository(object):
         self.sample_repository = sample_repository
 
     def dump_checksums(self, project):
+        """
+        Writes checksums for files relevant to the supplied project to a file under the project path.
+
+        :param project: an instance of Project
+        :return: the path to the created checksum file
+        """
 
         def _sample_file_checksum(sample_file):
             return [

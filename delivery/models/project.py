@@ -32,6 +32,7 @@ class RunfolderProject(BaseProject):
         :param path: path to the project
         :param runfolder_path: path the runfolder in which this project is stored.
         :param runfolder_name: name of the runfolder in which this project is stored
+        :param samples: list of instances of Sample, representing samples in the project
         """
         self.name = name
         self.path = os.path.abspath(path)

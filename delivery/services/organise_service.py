@@ -15,27 +15,33 @@ log = logging.getLogger(__name__)
 
 class OrganiseService(object):
     """
-    Starting in this context means copying a directory or file to a separate directory before delivering it.
-    This service handles that in a asynchronous way. Copying operations (right nwo powered by rsync) can be
-    started, and their status monitored by querying the underlying database for their status.
+    Starting in this context means organising a runfolder in preparation for a delivery. Each project on the runfolder
+    will be organised into its own separate directory. Sequence and report files will be symlinked from their original
+    location.
+    This service handles that in a synchronous way.
     """
 
     def __init__(self, runfolder_service, file_system_service=FileSystemService()):
         """
-        Instantiate a new StagingService
-        :param staging_dir: the directory to which files/dirs should be staged
-        :param external_program_service: a instance of ExternalProgramService
-        :param staging_repo: a instance of DatabaseBasedStagingRepository
-        :param runfolder_repo: a instance of FileSystemBasedRunfolderRepository
-        :param project_dir_repo: a instance of GeneralProjectRepository
-        :param project_links_directory: a path to a directory where links will be created temporarily
-                                        before they are rsynced into staging (for batched deliveries etc)
-        :param session_factory: a factory method which can produce new sqlalchemy Session instances
+        Instantiate a new OrganiseService
+        :param runfolder_service: an instance of a RunfolderService
+        :param file_system_service: an instance of FileSystemService
         """
         self.runfolder_service = runfolder_service
         self.file_system_service = file_system_service
 
     def organise_runfolder(self, runfolder_id, lanes, projects, force):
+        """
+        Organise a runfolder in preparation for delivery. This will create separate subdirectories for each of the
+        projects and symlink all files belonging to the project to be delivered under this directory.
+
+        :param runfolder_id: the name of the runfolder to be organised
+        :param lanes: if not None, only samples on any of the specified lanes will be organised
+        :param projects: if not None, only projects in this list will be organised
+        :param force: if True, a previously organised project will be renamed with a unique suffix
+        :raises ProjectAlreadyOrganisedException: if project has already been organised and force is False
+        :return: a Runfolder instance representing the runfolder after organisation
+        """
         runfolder = self.runfolder_service.find_runfolder(runfolder_id)
         projects_on_runfolder = self.runfolder_service.find_projects_on_runfolder(
             runfolder,
@@ -59,6 +65,18 @@ class OrganiseService(object):
             projects=organised_projects)
 
     def organise_project(self, runfolder, project, lanes, force):
+        """
+        Organise a project on a runfolder into its own directory and into a standard structure. If the project has
+        already been organised, a ProjectAlreadyOrganisedException will be raised, unless force is True. If force is
+        True, the existing project path will be renamed with a unique suffix.
+
+        :param runfolder: a Runfolder instance representing the runfolder on which the project belongs
+        :param project: a Project instance representing the project to be organised
+        :param lanes: if not None, only samples on any of the specified lanes will be organised
+        :param force: if True, a previously organised project will be renamed with a unique suffix
+        :raises ProjectAlreadyOrganisedException: if project has already been organised and force is False
+        :return: a Project instance representing the project after organisation
+        """
         organised_project_path = os.path.join(project.runfolder_path, "Projects", project.name)
 
         # handle the case when the organised path already exists
@@ -94,6 +112,12 @@ class OrganiseService(object):
         return organised_project
 
     def symlink_project_report(self, project, organised_project):
+        """
+        Find and symlink the project report to the organised project directory.
+
+        :param project: a Project instance representing the project before organisation
+        :param organised_project: a Project instance representing the project after organisation
+        """
         project_report_base, project_report_files = self.runfolder_service.get_project_report_files(project)
 
         def _link_name(target_file):
@@ -115,6 +139,17 @@ class OrganiseService(object):
             self.file_system_service.symlink(link_path, link_name)
 
     def organise_sample(self, sample, organised_project_path, lanes):
+        """
+        Organise a sample into its own directory under the corresponding project directory. Samples can be excluded
+        from organisation based on which lane they were run on. The sample directory will be named identically to the
+        sample id field. This may be different from the sample name field which is used as a prefix in the file name
+        for the sample files. This is the same behavior as e.g. bcl2fastq uses for sample id and sample name.
+
+        :param sample: a Sample instance representing the sample to be organised
+        :param organised_project_path: the path to the organised project directory under which to place the sample
+        :param lanes: if not None, only samples run on the any of the specified lanes will be organised
+        :return: a new Sample instance representing the sample after organisation
+        """
 
         def _include_sample_file(f):
             return not lanes or f.lane_no in lanes
