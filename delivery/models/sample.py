@@ -27,6 +27,9 @@ class Sample(object):
                other.project_name == self.project_name and \
                other.sample_files == self.sample_files
 
+    def __hash__(self):
+        return hash((self.name, self.sample_id, self.project_name, self.sample_files))
+
 
 class SampleFile(object):
     """
@@ -64,3 +67,14 @@ class SampleFile(object):
 
     def __eq__(self, other):
         return other.sample_path == self.sample_path and other.checksum == self.checksum
+
+    def __hash__(self):
+        return hash((
+            self.sample_path,
+            self.file_name,
+            self.sample_name,
+            self.sample_index,
+            self.lane_no,
+            self.read_no,
+            self.is_index,
+            self.checksum))

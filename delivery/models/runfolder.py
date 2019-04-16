@@ -30,3 +30,6 @@ class Runfolder(BaseModel):
         if isinstance(other, self.__class__):
             return self.path == other.path
         return False
+
+    def __hash__(self):
+        return hash((self.name, self.path, self.projects))

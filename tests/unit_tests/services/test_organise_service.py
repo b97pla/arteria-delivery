@@ -40,25 +40,26 @@ class TestOrganiseService(unittest.TestCase):
             self.organise_service.organise_runfolder(runfolder_id, lanes, projects, force)
             organise_project_mock.assert_called_once_with(self.runfolder, self.project, lanes, force)
 
-    def test_organise_project_already_organised(self):
+    def test_organise_runfolder_already_organised(self):
         self.file_system_service.exists.return_value = True
-        with mock.patch.object(self.organise_service, "symlink_project_report", autospec=True) as symlink_report_mock:
+        with mock.patch.object(self.organise_service, "organise_project", autospec=True) as organise_project_mock:
+            expected_organised_project = "this-is-an-organised-project"
+            organise_project_mock.return_value = expected_organised_project
+            self.runfolder_service.find_projects_on_runfolder.side_effect = yield from [self.project]
+            runfolder_id = self.runfolder.name
+
             # without force
             self.assertRaises(
                 ProjectAlreadyOrganisedException,
-                self.organise_service.organise_project,
-                self.runfolder, self.project, [], False)
+                self.organise_service.organise_runfolder,
+                runfolder_id, [], [], False)
 
             # with force
-            organised_path = os.path.join(self.project.runfolder_path, "Projects")
-            self.sample_repository.get_samples.return_value = []
-            self.organise_service.organise_project(self.runfolder, self.project, [], True)
-            self.file_system_service.rename.assert_called_once()
-            self.assertEqual(organised_path, self.file_system_service.rename.call_args[0][0])
-            self.assertRegex(
-                self.file_system_service.rename.call_args[0][1],
-                "{}\\.\\d+\\.\\d+".format(organised_path))
-            self.assertEqual(1, symlink_report_mock.call_count)
+            organised_runfolder = self.organise_service.organise_runfolder(runfolder_id, [], [], True)
+            self.assertEqual(self.runfolder.name, organised_runfolder.name)
+            self.assertEqual(self.runfolder.path, organised_runfolder.path)
+            self.assertEqual(self.runfolder.checksums, organised_runfolder.checksums)
+            self.assertListEqual([expected_organised_project], organised_runfolder.projects)
 
     def test_organise_project(self):
         with mock.patch.object(
@@ -66,8 +67,8 @@ class TestOrganiseService(unittest.TestCase):
                 mock.patch.object(
                     self.organise_service, "symlink_project_report", autospec=True) as symlink_report_mock:
             lanes = [1, 2, 3]
-            force = True
-            self.organise_service.organise_project(self.runfolder, self.project, lanes, force)
+            organised_projects_path = os.path.join(self.project.runfolder_path, "Projects")
+            self.organise_service.organise_project(self.runfolder, self.project, organised_projects_path, lanes)
             for sample in self.project.samples:
                 organise_sample_mock.assert_has_calls([
                     mock.call(

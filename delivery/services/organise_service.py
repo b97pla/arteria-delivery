@@ -39,32 +39,46 @@ class OrganiseService(object):
         :param lanes: if not None, only samples on any of the specified lanes will be organised
         :param projects: if not None, only projects in this list will be organised
         :param force: if True, a previously organised project will be renamed with a unique suffix
-        :raises ProjectAlreadyOrganisedException: if project has already been organised and force is False
+        :raises ProjectAlreadyOrganisedException: if a project has already been organised and force is False
         :return: a Runfolder instance representing the runfolder after organisation
         """
+        # retrieve a runfolder object and project objects to be organised
         runfolder = self.runfolder_service.find_runfolder(runfolder_id)
         projects_on_runfolder = self.runfolder_service.find_projects_on_runfolder(
             runfolder,
             only_these_projects=projects)
+
+        # handle previously organised projects
+        organised_projects_path = os.path.join(runfolder.path, "Projects")
+        for project in projects_on_runfolder:
+            self.check_previously_organised_project(project, organised_projects_path, force)
+
+        # organise the projects and return a new Runfolder instance
         organised_projects = []
         for project in projects_on_runfolder:
-            try:
-                organised_projects.append(
-                    self.organise_project(
-                        runfolder,
-                        project,
-                        lanes,
-                        force))
-            except ProjectAlreadyOrganisedException as e:
-                log.info(e)
-                log.info("no re-organisation of {} was attempted".format(project.name))
-                raise
+            organised_projects.append(self.organise_project(runfolder, project, organised_projects_path, lanes))
+
         return Runfolder(
             runfolder.name,
             runfolder.path,
             projects=organised_projects)
 
-    def organise_project(self, runfolder, project, lanes, force):
+    def check_previously_organised_project(self, project, organised_projects_path, force):
+        organised_project_path = os.path.join(organised_projects_path, project.name)
+        if os.path.exists(organised_project_path):
+            msg = "Organised project path '{}' already exists".format(organised_project_path)
+            if not force:
+                raise ProjectAlreadyOrganisedException(msg)
+            backup_path = os.path.join(
+                "{}.{}".format(
+                    organised_projects_path,
+                    str(time.time())),
+                project.name)
+            log.info(msg)
+            log.info("existing path '{}' will be moved to '{}'".format(organised_project_path, backup_path))
+            self.file_system_service.rename(organised_project_path, backup_path)
+
+    def organise_project(self, runfolder, project, organised_projects_path, lanes):
         """
         Organise a project on a runfolder into its own directory and into a standard structure. If the project has
         already been organised, a ProjectAlreadyOrganisedException will be raised, unless force is True. If force is
@@ -77,22 +91,9 @@ class OrganiseService(object):
         :raises ProjectAlreadyOrganisedException: if project has already been organised and force is False
         :return: a Project instance representing the project after organisation
         """
-        organised_project_path = os.path.join(project.runfolder_path, "Projects", project.name)
-
-        # handle the case when the organised path already exists
-        if self.file_system_service.exists(organised_project_path):
-            msg = "Organised project path '{}' already exists".format(organised_project_path)
-            if not force:
-                raise ProjectAlreadyOrganisedException(msg)
-            existing_path = os.path.dirname(organised_project_path)
-            backup_path = "{}.{}".format(existing_path, str(time.time()))
-            log.info(msg)
-            log.info("existing path '{}' will be moved to '{}'".format(existing_path, backup_path))
-            self.file_system_service.rename(existing_path, backup_path)
-
         # symlink the samples
+        organised_project_path = os.path.join(organised_projects_path, project.name)
         organised_project_runfolder_path = os.path.join(organised_project_path, runfolder.name)
-        self.file_system_service.makedirs(organised_project_runfolder_path)
         organised_samples = []
         for sample in project.samples:
             organised_samples.append(
@@ -151,36 +152,47 @@ class OrganiseService(object):
         :return: a new Sample instance representing the sample after organisation
         """
 
-        def _include_sample_file(f):
-            return not lanes or f.lane_no in lanes
-
         # symlink each sample in its own directory
         organised_sample_path = os.path.join(organised_project_path, sample.sample_id)
 
-        # filter the files if lanes should be excluded
-        sample_files_to_symlink = list(filter(_include_sample_file, sample.sample_files))
-        if sample_files_to_symlink:
-            self.file_system_service.makedirs(organised_sample_path)
-
         # symlink the sample files using relative paths
         organised_sample_files = []
-        for sample_file in sample_files_to_symlink:
-            link_name = os.path.join(organised_sample_path, sample_file.file_name)
-            relative_path = self.file_system_service.relpath(
-                sample_file.sample_path,
-                self.file_system_service.dirname(link_name))
-            self.file_system_service.symlink(relative_path, link_name)
-            organised_sample_files.append(
-                SampleFile(
-                    link_name,
-                    sample_name=sample_file.sample_name,
-                    sample_index=sample_file.sample_index,
-                    lane_no=sample_file.lane_no,
-                    read_no=sample_file.read_no,
-                    is_index=sample_file.is_index,
-                    checksum=sample_file.checksum))
+        for sample_file in sample.sample_files:
+            organised_sample_files.append(self.organise_sample_file(sample_file, organised_sample_path, lanes))
+
+        # clean up the list of sample files by removing None elements
+        organised_sample_files = list(filter(None, organised_sample_files))
+
         return Sample(
             name=sample.name,
             project_name=sample.project_name,
             sample_id=sample.sample_id,
             sample_files=organised_sample_files)
+
+    def organise_sample_file(self, sample_file, organised_sample_path, lanes):
+        """
+        Organise a sample file by creating a relative symlink in the supplied directory, pointing back to the supplied
+        SampleFile's original file path. The Sample file can be excluded from organisation based on the lane it was
+        derived from. The supplied directory will be created if it doesn't exist.
+
+        :param sample_file: a SampleFile instance representing the sample file to be organised
+        :param organised_sample_path: the path to the organised sample directory under which to place the symlink
+        :param lanes: if not None, only sample files derived from any of the specified lanes will be organised
+        :return: a new SampleFile instance representing the sample file after organisation
+        """
+        # skip if the sample file data is derived from a lane that shouldn't be included
+        if lanes and sample_file.lane_no not in lanes:
+            return None
+
+        # create the symlink in the supplied directory and relative to the file's original location
+        link_name = os.path.join(organised_sample_path, sample_file.file_name)
+        relative_path = self.file_system_service.relpath(sample_file.sample_path, organised_sample_path)
+        self.file_system_service.symlink(relative_path, link_name)
+        return SampleFile(
+            link_name,
+            sample_name=sample_file.sample_name,
+            sample_index=sample_file.sample_index,
+            lane_no=sample_file.lane_no,
+            read_no=sample_file.read_no,
+            is_index=sample_file.is_index,
+            checksum=sample_file.checksum)

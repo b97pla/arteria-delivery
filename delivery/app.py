@@ -56,7 +56,7 @@ def routes(**kwargs):
         url(r"/api/1.0/project/([^/]+)/best_practice_samples$", BestPracticeProjectSampleHandler,
             name="best_practice_samples", kwargs=kwargs),
 
-        url(r"/api/1.0/organise/runfolder/(.+)", OrganiseRunfolderHandler,
+        url(r"/api/1.0/organise/runfolder/([^/]+)", OrganiseRunfolderHandler,
             name="organise_runfolder", kwargs=kwargs),
 
         url(r"/api/1.0/stage/project/runfolders/(.+)", StagingProjectRunfoldersHandler,
