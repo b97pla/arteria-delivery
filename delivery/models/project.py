@@ -18,6 +18,9 @@ class BaseProject(BaseModel):
             return self.path == other.path
         return False
 
+    def __hash__(self):
+        return hash((self.__class__, self.path))
+
 
 class RunfolderProject(BaseProject):
     """
@@ -46,6 +49,15 @@ class RunfolderProject(BaseProject):
                 "runfolder_path": self.runfolder_path,
                 "runfolder_name": self.runfolder_name,
                 "samples": self.samples}
+
+    def __hash__(self):
+        return hash((
+            super().__hash__(),
+            self.name,
+            self.runfolder_path,
+            self.runfolder_path,
+            self.runfolder_name,
+            self.samples))
 
     def __eq__(self, other):
         return super().__eq__(other) and other.samples == self.samples
