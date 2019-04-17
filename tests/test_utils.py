@@ -9,6 +9,7 @@ from mock import MagicMock
 from delivery.models.project import RunfolderProject
 from delivery.models.runfolder import Runfolder
 from delivery.models.sample import SampleFile, Sample
+from delivery.services.metadata_service import MetadataService
 
 
 class MockIOLoop():
@@ -39,6 +40,12 @@ def mock_file_system_service(directories, projects, fastq_files=None):
     mock_file_system_service_instance.find_project_directories.return_value = projects
     mock_file_system_service_instance.list_files_recursively.return_value = fastq_files or []
     return mock_file_system_service_instance
+
+
+def mock_metadata_service(checksums=None):
+    mock_metadata_service_instance = MagicMock(spec=MetadataService)
+    mock_metadata_service_instance.parse_checksum_file.return_value = checksums or {}
+    return mock_metadata_service_instance
 
 
 def _item_generator(prefix=None, suffix=None):

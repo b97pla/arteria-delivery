@@ -6,6 +6,7 @@ import re
 from delivery.models.runfolder import Runfolder
 from delivery.models.project import RunfolderProject
 from delivery.services.file_system_service import FileSystemService
+from delivery.services.metadata_service import MetadataService
 
 log = logging.getLogger(__name__)
 
@@ -18,7 +19,7 @@ class FileSystemBasedRunfolderRepository(object):
     CHECKSUM_FILE_PATH = os.path.join("MD5", "checksums.md5")
     SAMPLESHEET_PATH = "SampleSheet.csv"
 
-    def __init__(self, base_path, file_system_service=FileSystemService()):
+    def __init__(self, base_path, file_system_service=FileSystemService(), metadata_service=MetadataService()):
         """
         Instantiate a new FileSystemBasedRunfolderRepository
         :param base_path: the directory where runfolders are stored
@@ -26,6 +27,7 @@ class FileSystemBasedRunfolderRepository(object):
         """
         self._base_path = base_path
         self.file_system_service = file_system_service
+        self.metadata_service = metadata_service
 
     def _add_projects_to_runfolder(self, runfolder):
         """
@@ -57,7 +59,7 @@ class FileSystemBasedRunfolderRepository(object):
             pass
 
     def _add_checksums_for_runfolder(self, runfolder):
-        checksums = self.file_system_service.parse_checksum_file(self.checksum_file(runfolder))
+        checksums = self.metadata_service.parse_checksum_file(self.checksum_file(runfolder))
         runfolder.checksums = checksums
 
     def _get_runfolders(self):
@@ -126,7 +128,7 @@ class FileSystemBasedRunfolderRepository(object):
         return os.path.join(runfolder.path, self.CHECKSUM_FILE_PATH)
 
     def get_samplesheet(self, runfolder):
-        return self.file_system_service.extract_samplesheet_data(self.samplesheet_file(runfolder))
+        return self.metadata_service.extract_samplesheet_data(self.samplesheet_file(runfolder))
 
 
 class FileSystemBasedUnorganisedRunfolderRepository(FileSystemBasedRunfolderRepository):
@@ -134,7 +136,12 @@ class FileSystemBasedUnorganisedRunfolderRepository(FileSystemBasedRunfolderRepo
     A subclass of `FileSystemBasedRunfolderRepository` providing functionality for a unorganised runfolder
     """
 
-    def __init__(self, base_path, project_repository, file_system_service=FileSystemService()):
+    def __init__(
+            self,
+            base_path,
+            project_repository,
+            file_system_service=None,
+            metadata_service=None):
         """
         Instantiate a new `FileSystemBasedUnorganisedRunfolderRepository` object.
 
@@ -144,7 +151,8 @@ class FileSystemBasedUnorganisedRunfolderRepository(FileSystemBasedRunfolderRepo
         """
         super(FileSystemBasedUnorganisedRunfolderRepository, self).__init__(
             base_path,
-            file_system_service=file_system_service)
+            file_system_service=file_system_service,
+            metadata_service=metadata_service)
         self.project_repository = project_repository
 
     def _add_projects_to_runfolder(self, runfolder):
@@ -186,7 +194,7 @@ class FileSystemBasedUnorganisedRunfolderRepository(FileSystemBasedRunfolderRepo
         samplesheet_data = self.get_samplesheet(runfolder)
         project_samplesheet_data = list(filter(_samplesheet_entry_in_project, samplesheet_data))
         project_samplesheet_file = os.path.join(project.path, self.SAMPLESHEET_PATH)
-        self.file_system_service.write_samplesheet_file(project_samplesheet_file, project_samplesheet_data)
+        self.metadata_service.write_samplesheet_file(project_samplesheet_file, project_samplesheet_data)
         return project_samplesheet_file
 
     def get_project_report_files(self, project):

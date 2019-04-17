@@ -3,6 +3,7 @@ import logging
 import os
 
 from delivery.services.file_system_service import FileSystemService
+from delivery.services.metadata_service import MetadataService
 from delivery.models.project import GeneralProject, RunfolderProject
 from delivery.exceptions import TooManyProjectsFound, ProjectNotFoundException, ProjectReportNotFoundException, \
     ProjectsDirNotfoundException
@@ -63,7 +64,7 @@ class UnorganisedRunfolderProjectRepository(object):
 
     PROJECTS_DIR = "Unaligned"
 
-    def __init__(self, sample_repository, filesystem_service=FileSystemService()):
+    def __init__(self, sample_repository, filesystem_service=FileSystemService(), metadata_service=MetadataService()):
         """
         Instantiate a new UnorganisedRunfolderProjectRepository object
 
@@ -72,6 +73,7 @@ class UnorganisedRunfolderProjectRepository(object):
         """
         self.filesystem_service = filesystem_service
         self.sample_repository = sample_repository
+        self.metadata_service = metadata_service
 
     def dump_checksums(self, project):
         """
@@ -93,7 +95,7 @@ class UnorganisedRunfolderProjectRepository(object):
                 yield _sample_file_checksum(sample_file)
 
         checksum_path = os.path.join(project.path, "checksums.md5")
-        self.filesystem_service.write_checksum_file(
+        self.metadata_service.write_checksum_file(
             checksum_path,
             {path: checksum for sample in project.samples for checksum, path in _sample_checksums(sample) if checksum})
 
