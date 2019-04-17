@@ -4,7 +4,8 @@ from delivery.models.runfolder import Runfolder
 from delivery.models.project import RunfolderProject
 from delivery.repositories.runfolder_repository import FileSystemBasedRunfolderRepository
 
-from tests.test_utils import FAKE_RUNFOLDERS, mock_file_system_service, fake_directories, fake_projects
+from tests.test_utils import FAKE_RUNFOLDERS, mock_file_system_service, mock_metadata_service, fake_directories, \
+    fake_projects
 
 
 class TestRunfolderRepository(unittest.TestCase):
@@ -13,8 +14,11 @@ class TestRunfolderRepository(unittest.TestCase):
 
     file_system_service = mock_file_system_service(fake_directories,
                                                    fake_projects)
+    metadata_service = mock_metadata_service()
+
     repo = FileSystemBasedRunfolderRepository(base_path="/foo",
-                                              file_system_service=file_system_service)
+                                              file_system_service=file_system_service,
+                                              metadata_service=metadata_service)
 
     def test_get_runfolders(self):
         actual_runfolders = list(self.repo.get_runfolders())
@@ -33,7 +37,8 @@ class TestRunfolderRepository(unittest.TestCase):
         file_system_service = mock_file_system_service(with_non_runfolder_dir,
                                                        fake_projects)
         repo = FileSystemBasedRunfolderRepository(base_path="/foo",
-                                                  file_system_service=file_system_service)
+                                                  file_system_service=file_system_service,
+                                                  metadata_service=self.metadata_service)
         actual_runfolders = list(repo.get_runfolders())
         self.assertListEqual(self.expected_runfolders, actual_runfolders)
 
