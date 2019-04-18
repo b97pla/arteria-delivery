@@ -3,6 +3,7 @@ import os
 import unittest
 
 from delivery.exceptions import ProjectAlreadyOrganisedException
+from delivery.models.project import RunfolderProject
 from delivery.repositories.project_repository import GeneralProjectRepository
 from delivery.repositories.sample_repository import RunfolderProjectBasedSampleRepository
 from delivery.services.file_system_service import FileSystemService
@@ -39,6 +40,32 @@ class TestOrganiseService(unittest.TestCase):
             force = False
             self.organise_service.organise_runfolder(runfolder_id, lanes, projects, force)
             organise_project_mock.assert_called_once_with(self.runfolder, self.project, lanes, force)
+
+    def test_check_previously_organised_project(self):
+        organised_project_base_path = os.path.dirname(self.organised_project_path)
+        organised_projects_path = os.path.dirname(organised_project_base_path)
+        # not previously organised
+        self.file_system_service.exists.return_value = False
+        self.assertIsNone(
+            self.organise_service.check_previously_organised_project(
+                self.project,
+                organised_projects_path,
+                False
+            ))
+        # previously organised and not forced
+        self.file_system_service.exists.return_value = True
+        self.assertRaises(
+            ProjectAlreadyOrganisedException,
+            self.organise_service.check_previously_organised_project,
+            self.project,
+            organised_projects_path,
+            False)
+        # previously organised and forced
+        self.organise_service.check_previously_organised_project(
+            self.project,
+            organised_projects_path,
+            True)
+        self.file_system_service.rename.assert_called_once()
 
     def test_organise_runfolder_already_organised(self):
         self.file_system_service.exists.return_value = True
@@ -107,3 +134,64 @@ class TestOrganiseService(unittest.TestCase):
                 list(map(lambda x: x.file_name, filter(lambda f: f.lane_no in [2, 3], sample.sample_files))),
                 list(map(lambda x: x.file_name, organised_sample.sample_files)))
 
+    def test_organise_sample_file(self):
+        lanes = [1, 2, 3, 6, 7, 8]
+        self.file_system_service.relpath.side_effect = os.path.relpath
+        for sample in self.project.samples:
+            for sample_file in sample.sample_files:
+                organised_sample_path = os.path.join(
+                    os.path.dirname(
+                        os.path.dirname(
+                            sample_file.sample_path)),
+                    "{}_organised".format(sample.sample_id))
+                organised_sample_file = self.organise_service.organise_sample_file(
+                    sample_file,
+                    organised_sample_path,
+                    lanes)
+
+                # if the sample file is derived from a lane that should be skipped
+                if sample_file.lane_no not in lanes:
+                    self.assertIsNone(organised_sample_file)
+                    continue
+
+                expected_link_path = os.path.join(
+                    organised_sample_path,
+                    os.path.basename(sample_file.sample_path))
+                self.assertEqual(
+                    expected_link_path,
+                    organised_sample_file.sample_path)
+                self.file_system_service.symlink.assert_called_with(
+                    os.path.join(
+                        "..",
+                        os.path.basename(
+                            os.path.dirname(sample_file.sample_path)),
+                        os.path.basename(sample_file.sample_path)),
+                    expected_link_path)
+                for attr in ("file_name", "sample_name", "sample_index", "lane_no", "read_no", "is_index", "checksum"):
+                    self.assertEqual(
+                        getattr(sample_file, attr),
+                        getattr(organised_sample_file, attr))
+
+    def test_symlink_project_report(self):
+        organised_project_path = "/bar/project"
+        organised_project = RunfolderProject(
+            self.project.name,
+            organised_project_path,
+            self.project.runfolder_path,
+            self.project.runfolder_name)
+        project_report_base = "/foo"
+        project_report_files = [
+            os.path.join(project_report_base, "a-report-file"),
+            os.path.join(project_report_base, "report-dir", "another-report-file")
+        ]
+        self.runfolder_service.get_project_report_files.return_value = project_report_base, project_report_files
+        self.file_system_service.relpath.side_effect = os.path.relpath
+        self.file_system_service.dirname.side_effect = os.path.dirname
+        self.organise_service.symlink_project_report(self.project, organised_project)
+        self.file_system_service.symlink.assert_has_calls([
+            mock.call(
+                os.path.join("..", "..", "foo", "a-report-file"),
+                os.path.join(organised_project_path, "a-report-file")),
+            mock.call(
+                os.path.join("..", "..", "..", "foo", "report-dir", "another-report-file"),
+                os.path.join(organised_project_path, "report-dir", "another-report-file"))])

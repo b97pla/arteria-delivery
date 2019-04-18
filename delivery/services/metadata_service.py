@@ -61,5 +61,5 @@ class MetadataService(object):
     def hash_string(input_string, hasher_obj=None):
         if not hasher_obj:
             hasher_obj = MetadataService.get_hash_object()
-        hasher_obj.update(input_string.encode("utf-8"))
+        hasher_obj.update(input_string.encode())
         return hasher_obj.hexdigest()
