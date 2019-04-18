@@ -64,7 +64,7 @@ class OrganiseService(object):
 
     def check_previously_organised_project(self, project, organised_projects_path, force):
         organised_project_path = os.path.join(organised_projects_path, project.name)
-        if os.path.exists(organised_project_path):
+        if self.file_system_service.exists(organised_project_path):
             msg = "Organised project path '{}' already exists".format(organised_project_path)
             if not force:
                 raise ProjectAlreadyOrganisedException(msg)
