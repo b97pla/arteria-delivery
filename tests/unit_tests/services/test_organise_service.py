@@ -3,6 +3,7 @@ import os
 import unittest
 
 from delivery.exceptions import ProjectAlreadyOrganisedException
+from delivery.models.project import RunfolderProject
 from delivery.repositories.project_repository import GeneralProjectRepository
 from delivery.repositories.sample_repository import RunfolderProjectBasedSampleRepository
 from delivery.services.file_system_service import FileSystemService
@@ -170,3 +171,27 @@ class TestOrganiseService(unittest.TestCase):
                     self.assertEqual(
                         getattr(sample_file, attr),
                         getattr(organised_sample_file, attr))
+
+    def test_symlink_project_report(self):
+        organised_project_path = "/bar/project"
+        organised_project = RunfolderProject(
+            self.project.name,
+            organised_project_path,
+            self.project.runfolder_path,
+            self.project.runfolder_name)
+        project_report_base = "/foo"
+        project_report_files = [
+            os.path.join(project_report_base, "a-report-file"),
+            os.path.join(project_report_base, "report-dir", "another-report-file")
+        ]
+        self.runfolder_service.get_project_report_files.return_value = project_report_base, project_report_files
+        self.file_system_service.relpath.side_effect = os.path.relpath
+        self.file_system_service.dirname.side_effect = os.path.dirname
+        self.organise_service.symlink_project_report(self.project, organised_project)
+        self.file_system_service.symlink.assert_has_calls([
+            mock.call(
+                os.path.join("..", "..", "foo", "a-report-file"),
+                os.path.join(organised_project_path, "a-report-file")),
+            mock.call(
+                os.path.join("..", "..", "..", "foo", "report-dir", "another-report-file"),
+                os.path.join(organised_project_path, "report-dir", "another-report-file"))])
