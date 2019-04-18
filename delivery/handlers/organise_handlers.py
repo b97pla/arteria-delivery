@@ -73,8 +73,11 @@ class OrganiseRunfolderHandler(BaseOrganiseHandler):
                 ChecksumFileNotFoundException,
                 SamplesheetNotFoundException,
                 ProjectReportNotFoundException) as e:
+            log.error(str(e), exc_info=e)
             self.set_status(NOT_FOUND, reason=str(e))
         except ProjectAlreadyOrganisedException as e:
+            log.error(str(e), exc_info=e)
             self.set_status(FORBIDDEN, reason=str(e))
         except (FileNameParsingException, Exception) as e:
+            log.error(str(e), exc_info=e)
             self.set_status(INTERNAL_SERVER_ERROR, reason=str(e))

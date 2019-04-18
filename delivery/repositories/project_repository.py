@@ -200,10 +200,11 @@ class UnorganisedRunfolderProjectRepository(object):
         :param sample_lane: the lane the sample to search for was sequenced on
         :return: True if a matching sample could be found, False otherwise
         """
+        sample_obj = self.get_sample(project, sample_id)
         return all([
             sample_project == project.name,
-            self.get_sample(project, sample_id),
-            sample_lane in self.sample_repository.sample_lanes(self.get_sample(project, sample_id))])
+            sample_obj,
+            sample_lane in self.sample_repository.sample_lanes(sample_obj)])
 
     @staticmethod
     def get_sample(project, sample_id):

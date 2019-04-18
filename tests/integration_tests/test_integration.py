@@ -12,7 +12,7 @@ from arteria.web.app import AppService
 
 from delivery.app import routes as app_routes, compose_application
 from delivery.models.db_models import StagingStatus, DeliveryStatus
-from delivery.services.file_system_service import FileSystemService
+from delivery.services.metadata_service import MetadataService
 
 from tests.test_utils import assert_eventually_equals, unorganised_runfolder, samplesheet_file_from_runfolder, \
     project_report_files
@@ -49,6 +49,13 @@ class TestIntegration(AsyncHTTPTestCase):
             f.write(os.urandom(1024))
 
     @staticmethod
+    def _create_checksums_file(base_dir, checksums=None):
+        checksum_file = os.path.join(base_dir, "MD5", "checksums.md5")
+        os.mkdir(os.path.dirname(checksum_file))
+        MetadataService.write_checksum_file(checksum_file, checksums or {})
+        return checksum_file
+
+    @staticmethod
     def _create_runfolder_structure_on_disk(runfolder):
 
         def _toggle():
@@ -75,7 +82,7 @@ class TestIntegration(AsyncHTTPTestCase):
 
         checksum_file = os.path.join(runfolder.path, "MD5", "checksums.md5")
         os.mkdir(os.path.dirname(checksum_file))
-        FileSystemService.write_checksum_file(checksum_file, runfolder.checksums)
+        MetadataService.write_checksum_file(checksum_file, runfolder.checksums)
         samplesheet_file_from_runfolder(runfolder)
 
     API_BASE = "/api/1.0"
@@ -136,10 +143,10 @@ class TestIntegration(AsyncHTTPTestCase):
             self.assertEqual(response.code, 200)
 
             response_json = json.loads(response.body)
-            self.assertDictEqual(
-                {"runfolder": runfolder.path,
-                 "projects": [project.name for project in runfolder.projects]},
-                response_json)
+            self.assertEqual(runfolder.path, response_json["runfolder"])
+            self.assertListEqual(
+                sorted([project.name for project in runfolder.projects]),
+                sorted(response_json["projects"]))
 
             for project in runfolder.projects:
                 organised_path = os.path.join(runfolder.path, "Projects", project.name)
@@ -187,9 +194,9 @@ class TestIntegration(AsyncHTTPTestCase):
 
         with tempfile.TemporaryDirectory(dir='./tests/resources/runfolders/', prefix='160930_ST-E00216_0111_BH37CWALXX_') as tmp_dir:
 
-
             dir_name = os.path.basename(tmp_dir)
             self._create_projects_dir_with_random_data(tmp_dir)
+            self._create_checksums_file(tmp_dir)
 
             url = "/".join([self.API_BASE, "stage", "runfolder", dir_name])
             response = self.fetch(url, method='POST', body='')
@@ -240,6 +247,7 @@ class TestIntegration(AsyncHTTPTestCase):
 
             dir_name = os.path.basename(tmp_dir)
             self._create_projects_dir_with_random_data(tmp_dir)
+            self._create_checksums_file(tmp_dir)
 
             url = "/".join([self.API_BASE, "stage", "runfolder", dir_name])
             response = self.fetch(url, method='POST', body='')

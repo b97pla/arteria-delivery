@@ -1,4 +1,5 @@
 import csv
+import hashlib
 import logging
 
 from delivery.exceptions import ChecksumFileNotFoundException, SamplesheetNotFoundException
@@ -51,3 +52,14 @@ class MetadataService(object):
             writer = csv.DictWriter(fh, fieldnames=header)
             writer.writeheader()
             writer.writerows(samplesheet_data)
+
+    @staticmethod
+    def get_hash_object():
+        return hashlib.md5()
+
+    @staticmethod
+    def hash_string(input_string, hasher_obj=None):
+        if not hasher_obj:
+            hasher_obj = MetadataService.get_hash_object()
+        hasher_obj.update(input_string.encode("utf-8"))
+        return hasher_obj.hexdigest()
