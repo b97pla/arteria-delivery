@@ -44,9 +44,8 @@ class OrganiseService(object):
         """
         # retrieve a runfolder object and project objects to be organised
         runfolder = self.runfolder_service.find_runfolder(runfolder_id)
-        projects_on_runfolder = self.runfolder_service.find_projects_on_runfolder(
-            runfolder,
-            only_these_projects=projects)
+        projects_on_runfolder = list(
+            self.runfolder_service.find_projects_on_runfolder(runfolder, only_these_projects=projects))
 
         # handle previously organised projects
         organised_projects_path = os.path.join(runfolder.path, "Projects")
