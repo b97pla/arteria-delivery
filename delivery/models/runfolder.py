@@ -33,3 +33,11 @@ class Runfolder(BaseModel):
 
     def __hash__(self):
         return hash((self.name, self.path, self.projects))
+
+
+class RunfolderFile(object):
+
+    def __init__(self, file_path, file_checksum=None):
+        self.file_path = os.path.abspath(file_path)
+        self.file_name = os.path.basename(file_path)
+        self.checksum = file_checksum

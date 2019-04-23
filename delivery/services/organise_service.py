@@ -6,7 +6,7 @@ import time
 from delivery.exceptions import ProjectAlreadyOrganisedException
 
 from delivery.models.project import RunfolderProject
-from delivery.models.runfolder import Runfolder
+from delivery.models.runfolder import Runfolder, RunfolderFile
 from delivery.models.sample import Sample, SampleFile
 from delivery.services.file_system_service import FileSystemService
 
@@ -100,43 +100,53 @@ class OrganiseService(object):
                     sample,
                     organised_project_runfolder_path,
                     lanes))
+        # symlink the project files
+        organised_project_files = []
+        if project.project_files:
+            project_file_base = self.file_system_service.dirname(project.project_files[0].file_path)
+            for project_file in project.project_files:
+                organised_project_files.append(
+                    self.organise_project_file(
+                        project_file,
+                        organised_project_path,
+                        project_file_base=project_file_base))
         organised_project = RunfolderProject(
             project.name,
             organised_project_path,
             runfolder.path,
             runfolder.name,
             samples=organised_samples)
-        self.symlink_project_report(project, organised_project)
+        organised_project_files.append(
+            self.runfolder_service.dump_project_samplesheet(
+                runfolder,
+                organised_project)
+        )
+        organised_project.project_files = organised_project_files
         self.runfolder_service.dump_project_checksums(organised_project)
-        self.runfolder_service.dump_project_samplesheet(runfolder, organised_project)
+
         return organised_project
 
-    def symlink_project_report(self, project, organised_project):
+    def organise_project_file(self, project_file, organised_project_path, project_file_base=None):
         """
         Find and symlink the project report to the organised project directory.
 
         :param project: a Project instance representing the project before organisation
         :param organised_project: a Project instance representing the project after organisation
         """
-        project_report_base, project_report_files = self.runfolder_service.get_project_report_files(project)
+        project_file_base = project_file_base or self.file_system_service.dirname(project_file.file_path)
 
-        def _link_name(target_file):
-            return os.path.join(
-                organised_project.path,
-                self.file_system_service.relpath(
-                    target_file,
-                    project_report_base))
-
-        def _link_path(target_file, link_name):
-            return self.file_system_service.relpath(
-                target_file,
-                self.file_system_service.dirname(link_name)
-            )
-
-        for project_report_file in project_report_files:
-            link_name = _link_name(project_report_file)
-            link_path = _link_path(project_report_file, link_name)
-            self.file_system_service.symlink(link_path, link_name)
+        # the full path to the symlink
+        link_name = os.path.join(
+            organised_project_path,
+            self.file_system_service.relpath(
+                project_file.file_path,
+                project_file_base))
+        # the relative path from the symlink to the original file
+        link_path = self.file_system_service.relpath(
+            project_file.file_path,
+            self.file_system_service.dirname(link_name))
+        self.file_system_service.symlink(link_path, link_name)
+        return RunfolderFile(link_name, file_checksum=project_file.checksum)
 
     def organise_sample(self, sample, organised_project_path, lanes):
         """
@@ -185,7 +195,7 @@ class OrganiseService(object):
 
         # create the symlink in the supplied directory and relative to the file's original location
         link_name = os.path.join(organised_sample_path, sample_file.file_name)
-        relative_path = self.file_system_service.relpath(sample_file.sample_path, organised_sample_path)
+        relative_path = self.file_system_service.relpath(sample_file.file_path, organised_sample_path)
         self.file_system_service.symlink(relative_path, link_name)
         return SampleFile(
             link_name,

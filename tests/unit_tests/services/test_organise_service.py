@@ -3,7 +3,7 @@ import os
 import unittest
 
 from delivery.exceptions import ProjectAlreadyOrganisedException
-from delivery.models.project import RunfolderProject
+from delivery.models.runfolder import RunfolderFile
 from delivery.repositories.project_repository import GeneralProjectRepository
 from delivery.repositories.sample_repository import RunfolderProjectBasedSampleRepository
 from delivery.services.file_system_service import FileSystemService
@@ -92,17 +92,24 @@ class TestOrganiseService(unittest.TestCase):
         with mock.patch.object(
                 self.organise_service, "organise_sample", autospec=True) as organise_sample_mock, \
                 mock.patch.object(
-                    self.organise_service, "symlink_project_report", autospec=True) as symlink_report_mock:
+                self.organise_service, "organise_project_file", autospec=True) as organise_project_file_mock:
+            self.file_system_service.dirname.side_effect = os.path.dirname
             lanes = [1, 2, 3]
             organised_projects_path = os.path.join(self.project.runfolder_path, "Projects")
             self.organise_service.organise_project(self.runfolder, self.project, organised_projects_path, lanes)
-            for sample in self.project.samples:
-                organise_sample_mock.assert_has_calls([
-                    mock.call(
-                        sample,
-                        self.organised_project_path,
-                        lanes)])
-            self.assertEqual(1, symlink_report_mock.call_count)
+            organise_sample_mock.assert_has_calls([
+                mock.call(
+                    sample,
+                    self.organised_project_path,
+                    lanes)
+                for sample in self.project.samples])
+            organise_project_file_mock.assert_has_calls([
+                mock.call(
+                    project_file,
+                    os.path.join(organised_projects_path, self.project.name),
+                    os.path.dirname(self.project.project_files[0].file_path)
+                )
+                for project_file in self.project.project_files])
 
     def test_organise_sample(self):
         # relative symlinks should be created with the correct arguments
@@ -112,13 +119,13 @@ class TestOrganiseService(unittest.TestCase):
             organised_sample = self.organise_service.organise_sample(sample, self.organised_project_path, [])
             sample_file_dir = os.path.relpath(
                 os.path.dirname(
-                    sample.sample_files[0].sample_path),
+                    sample.sample_files[0].file_path),
                 self.project.runfolder_path)
             relative_path = os.path.join("..", "..", "..", "..", sample_file_dir)
             self.file_system_service.symlink.assert_has_calls([
                 mock.call(
-                    os.path.join(relative_path, os.path.basename(sample_file.sample_path)),
-                    sample_file.sample_path) for sample_file in organised_sample.sample_files])
+                    os.path.join(relative_path, os.path.basename(sample_file.file_path)),
+                    sample_file.file_path) for sample_file in organised_sample.sample_files])
 
     def test_organise_sample_exclude_by_lane(self):
 
@@ -142,7 +149,7 @@ class TestOrganiseService(unittest.TestCase):
                 organised_sample_path = os.path.join(
                     os.path.dirname(
                         os.path.dirname(
-                            sample_file.sample_path)),
+                            sample_file.file_path)),
                     "{}_organised".format(sample.sample_id))
                 organised_sample_file = self.organise_service.organise_sample_file(
                     sample_file,
@@ -156,38 +163,43 @@ class TestOrganiseService(unittest.TestCase):
 
                 expected_link_path = os.path.join(
                     organised_sample_path,
-                    os.path.basename(sample_file.sample_path))
+                    os.path.basename(sample_file.file_path))
                 self.assertEqual(
                     expected_link_path,
-                    organised_sample_file.sample_path)
+                    organised_sample_file.file_path)
                 self.file_system_service.symlink.assert_called_with(
                     os.path.join(
                         "..",
                         os.path.basename(
-                            os.path.dirname(sample_file.sample_path)),
-                        os.path.basename(sample_file.sample_path)),
+                            os.path.dirname(sample_file.file_path)),
+                        os.path.basename(sample_file.file_path)),
                     expected_link_path)
                 for attr in ("file_name", "sample_name", "sample_index", "lane_no", "read_no", "is_index", "checksum"):
                     self.assertEqual(
                         getattr(sample_file, attr),
                         getattr(organised_sample_file, attr))
 
-    def test_symlink_project_report(self):
+    def test_organise_project_file(self):
         organised_project_path = "/bar/project"
-        organised_project = RunfolderProject(
-            self.project.name,
-            organised_project_path,
-            self.project.runfolder_path,
-            self.project.runfolder_name)
-        project_report_base = "/foo"
-        project_report_files = [
-            os.path.join(project_report_base, "a-report-file"),
-            os.path.join(project_report_base, "report-dir", "another-report-file")
-        ]
-        self.runfolder_service.get_project_report_files.return_value = project_report_base, project_report_files
+        project_file_base = "/foo"
+        project_files = [
+            RunfolderFile(
+                os.path.join(
+                    project_file_base,
+                    project_file),
+                file_checksum="checksum-for-{}".format(project_file))
+            for project_file in ("a-report-file", os.path.join("report-dir", "another-report-file"))]
         self.file_system_service.relpath.side_effect = os.path.relpath
         self.file_system_service.dirname.side_effect = os.path.dirname
-        self.organise_service.symlink_project_report(self.project, organised_project)
+        for project_file in project_files:
+            organised_project_file = self.organise_service.organise_project_file(
+                project_file, organised_project_path, project_file_base)
+            self.assertEqual(
+                os.path.join(
+                    organised_project_path,
+                    os.path.relpath(project_file.file_path, project_file_base)),
+                organised_project_file.file_path)
+            self.assertEqual(project_file.checksum, organised_project_file.checksum)
         self.file_system_service.symlink.assert_has_calls([
             mock.call(
                 os.path.join("..", "..", "foo", "a-report-file"),

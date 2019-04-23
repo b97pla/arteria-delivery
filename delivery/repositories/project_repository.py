@@ -5,6 +5,7 @@ import os
 from delivery.services.file_system_service import FileSystemService
 from delivery.services.metadata_service import MetadataService
 from delivery.models.project import GeneralProject, RunfolderProject
+from delivery.models.runfolder import RunfolderFile
 from delivery.exceptions import TooManyProjectsFound, ProjectNotFoundException, ProjectReportNotFoundException, \
     ProjectsDirNotfoundException
 
@@ -87,7 +88,7 @@ class UnorganisedRunfolderProjectRepository(object):
             return [
                 sample_file.checksum,
                 self.filesystem_service.relpath(
-                    sample_file.sample_path,
+                    sample_file.file_path,
                     project.path)] if sample_file.checksum else None
 
         def _sample_checksums(sample):
@@ -95,9 +96,15 @@ class UnorganisedRunfolderProjectRepository(object):
                 yield _sample_file_checksum(sample_file)
 
         checksum_path = os.path.join(project.path, "checksums.md5")
+        checksums = {
+            path: checksum for sample in project.samples for checksum, path in _sample_checksums(sample) if checksum}
+        checksums.update({
+            self.filesystem_service.relpath(
+                project_file.file_path,
+                project.path): project_file.checksum for project_file in project.project_files})
         self.metadata_service.write_checksum_file(
             checksum_path,
-            {path: checksum for sample in project.samples for checksum, path in _sample_checksums(sample) if checksum})
+            checksums)
 
         return checksum_path
 
@@ -122,6 +129,7 @@ class UnorganisedRunfolderProjectRepository(object):
                 runfolder_path=runfolder.path,
                 runfolder_name=runfolder.name
             )
+            project.project_files = self.get_report_files(project, checksums=runfolder.checksums)
             project.samples = self.sample_repository.get_samples(project, runfolder)
             return project
 
@@ -139,22 +147,35 @@ class UnorganisedRunfolderProjectRepository(object):
         except FileNotFoundError:
             raise ProjectsDirNotfoundException("Did not find Unaligned folder for: {}".format(runfolder.name))
 
-    def get_report_files(self, project):
+    def get_report_files(self, project, checksums=None):
         """
         Gets the paths to files associated with the supplied project's report. This can be either a MultiQC report or,
-        if no such report was found, a Sisyphus report.
+        if no such report was found, a Sisyphus report. If a pre-calculated checksum cannot be found for a file, it will
+        be calculated on-the-fly.
 
         :param project: a RunfolderProject instance
-        :return: a tuple with the path to the directory containing the report files and a list of the paths to the
-        report files
+        :param checksums: a dict with pre-calculated checksums for files. paths are keys and the corresponding
+        checksum is the value
+        :return: a list of RunfolderFile objects
         :raises ProjectReportNotFoundException: if no MultiQC or Sisyphus report was found for the project
         """
+        def _file_object_from_path(file_path):
+            relative_file_path = self.filesystem_service.relpath(
+                file_path,
+                self.filesystem_service.dirname(project.runfolder_path))
+            checksum = checksums[relative_file_path] \
+                if relative_file_path in checksums else self.metadata_service.hash_file(file_path)
+            return RunfolderFile(file_path, file_checksum=checksum)
+
+        checksums = checksums or {}
         if self.filesystem_service.exists(self.multiqc_report_path(project)):
-            return self.multiqc_report_files(project)
+            return list(map(_file_object_from_path, self.multiqc_report_files(project)))
         for sisyphus_report_path in self.sisyphus_report_path(project):
             if self.filesystem_service.exists(sisyphus_report_path):
-                return self.sisyphus_report_files(
-                    self.filesystem_service.dirname(sisyphus_report_path))
+                return list(map(
+                    _file_object_from_path,
+                    self.sisyphus_report_files(
+                        self.filesystem_service.dirname(sisyphus_report_path))))
         raise ProjectReportNotFoundException("No project report found for {}".format(project.name))
 
     @staticmethod
@@ -175,7 +196,7 @@ class UnorganisedRunfolderProjectRepository(object):
                 os.path.join(
                     report_dir,
                     "Plots"))))
-        return report_dir, report_files
+        return report_files
 
     @staticmethod
     def multiqc_report_path(project):
@@ -188,7 +209,7 @@ class UnorganisedRunfolderProjectRepository(object):
         report_dir = self.filesystem_service.dirname(report_files[0])
         report_files.append(
             os.path.join(report_dir, "{}_multiqc_report_data.zip".format(project.name)))
-        return report_dir, report_files
+        return report_files
 
     def is_sample_in_project(self, project, sample_project, sample_id, sample_lane):
         """

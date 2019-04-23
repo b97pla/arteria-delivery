@@ -1,6 +1,8 @@
 
 import os
 
+from delivery.models.runfolder import RunfolderFile
+
 
 class Sample(object):
     """
@@ -31,7 +33,7 @@ class Sample(object):
         return hash((self.name, self.sample_id, self.project_name, self.sample_files))
 
 
-class SampleFile(object):
+class SampleFile(RunfolderFile):
     """
     Models the concept of a sequence file belonging to a sample
     """
@@ -56,21 +58,19 @@ class SampleFile(object):
         :param is_index: if True, the sequence file contains index sequences
         :param checksum: the MD5 checksum for this SampleFile
         """
-        self.sample_path = os.path.abspath(sample_path)
-        self.file_name = os.path.basename(sample_path)
+        super(SampleFile, self).__init__(sample_path, file_checksum=checksum)
         self.sample_name = sample_name
         self.sample_index = sample_index
         self.lane_no = lane_no
         self.read_no = read_no
         self.is_index = is_index
-        self.checksum = checksum
 
     def __eq__(self, other):
-        return other.sample_path == self.sample_path and other.checksum == self.checksum
+        return other.file_path == self.file_path and other.checksum == self.checksum
 
     def __hash__(self):
         return hash((
-            self.sample_path,
+            self.file_path,
             self.file_name,
             self.sample_name,
             self.sample_index,

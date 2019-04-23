@@ -63,3 +63,11 @@ class MetadataService(object):
             hasher_obj = MetadataService.get_hash_object()
         hasher_obj.update(input_string.encode())
         return hasher_obj.hexdigest()
+
+    @staticmethod
+    def hash_file(input_file):
+        hasher_obj = MetadataService.get_hash_object()
+        with open(input_file, 'rb') as fh:
+            for line in fh:
+                hasher_obj.update(line)
+        return hasher_obj.hexdigest()

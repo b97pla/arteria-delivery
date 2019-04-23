@@ -69,16 +69,14 @@ class TestIntegration(AsyncHTTPTestCase):
             with open(file_path, 'wb') as f:
                 f.write(os.urandom(1024))
 
-        report_type = _toggle()
         os.makedirs(runfolder.path, exist_ok=True)
         for project in runfolder.projects:
             os.makedirs(project.path)
             for sample in project.samples:
                 for sample_file in sample.sample_files:
-                    _touch_file(sample_file.sample_path)
-            report_dir, report_files = project_report_files(project, multiqc_report=next(report_type))
-            for report_file in report_files:
-                _touch_file(report_file)
+                    _touch_file(sample_file.file_path)
+            for report_file in project.project_files:
+                _touch_file(report_file.file_path)
 
         checksum_file = os.path.join(runfolder.path, "MD5", "checksums.md5")
         os.mkdir(os.path.dirname(checksum_file))
@@ -151,42 +149,39 @@ class TestIntegration(AsyncHTTPTestCase):
             for project in runfolder.projects:
                 organised_path = os.path.join(runfolder.path, "Projects", project.name)
                 self.assertTrue(os.path.exists(organised_path))
-                for f in "SampleSheet.csv", "checksums.md5":
-                    self.assertTrue(os.path.exists(os.path.join(organised_path, f)))
-                report_files = [
-                    os.path.join(organised_path, l) for l in (
-                        "report.html",
-                        "{}_multiqc_report.html".format(project.name))]
-                if os.path.exists(report_files[0]):
+                checksum_file = os.path.join(organised_path, "checksums.md5")
+                samplesheet_file = os.path.join(organised_path, "SampleSheet.csv")
+                for f in (checksum_file, samplesheet_file):
+                    self.assertTrue(os.path.exists(f))
+
+                checksums = MetadataService.parse_checksum_file(checksum_file)
+
+                def _verify_checksum(file_path, expected_checksum):
+                    self.assertIn(file_path, checksums)
+                    self.assertEqual(checksums[file_path], expected_checksum)
+
+                _verify_checksum(
+                    os.path.basename(samplesheet_file),
+                    MetadataService.hash_file(samplesheet_file))
+
+                project_file_base = os.path.dirname(project.project_files[0].file_path)
+                for project_file in project.project_files:
+                    relative_path = os.path.relpath(project_file.file_path, project_file_base)
+                    organised_project_file_path = os.path.join(organised_path, relative_path)
                     self.assertTrue(
                         os.path.samefile(
-                            os.path.join(
-                                runfolder.path,
-                                "Summary",
-                                project.name,
-                                os.path.basename(report_files[0])),
-                            report_files[0]))
-                elif os.path.exists(report_files[1]):
-                    self.assertTrue(
-                        os.path.samefile(
-                            os.path.join(
-                                project.path,
-                                os.path.basename(report_files[1])),
-                            report_files[1]))
-                else:
-                    raise AssertionError("Report files not properly linked")
-                self.assertTrue(
-                    any(
-                        map(
-                            lambda l: os.path.exists(os.path.join(organised_path, l)),
-                            ["report.html", "{}_multiqc_report.html".format(project.name)])))
+                            organised_project_file_path,
+                            project_file.file_path))
+                    _verify_checksum(relative_path, project_file.checksum)
                 for sample in project.samples:
                     sample_path = os.path.join(organised_path, runfolder.name, sample.sample_id)
                     self.assertTrue(os.path.exists(sample_path))
                     for sample_file in sample.sample_files:
                         organised_file_path = os.path.join(sample_path, sample_file.file_name)
                         self.assertTrue(os.path.exists(organised_file_path))
-                        self.assertTrue(os.path.samefile(sample_file.sample_path, organised_file_path))
+                        self.assertTrue(os.path.samefile(sample_file.file_path, organised_file_path))
+                        relative_file_path = os.path.relpath(organised_file_path, organised_path)
+                        _verify_checksum(relative_file_path, sample_file.checksum)
 
     def test_can_stage_and_delivery_runfolder(self):
         # Note that this is a test which skips mover (since to_outbox is not expected to be installed on the system

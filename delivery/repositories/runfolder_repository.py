@@ -5,7 +5,7 @@ import os
 import re
 
 from delivery.exceptions import ChecksumFileNotFoundException
-from delivery.models.runfolder import Runfolder
+from delivery.models.runfolder import Runfolder, RunfolderFile
 from delivery.models.project import RunfolderProject
 from delivery.services.file_system_service import FileSystemService
 from delivery.services.metadata_service import MetadataService
@@ -81,8 +81,8 @@ class FileSystemBasedRunfolderRepository(object):
         name = os.path.basename(directory)
         path = os.path.join(self._base_path, directory)
         runfolder = Runfolder(name=name, path=path, projects=None)
-        self._add_projects_to_runfolder(runfolder)
         self._add_checksums_for_runfolder(runfolder, ignore_errors=ignore_errors)
+        self._add_projects_to_runfolder(runfolder)
         return runfolder
 
     def _get_runfolders(self, ignore_errors=False):
@@ -189,7 +189,7 @@ class FileSystemBasedUnorganisedRunfolderRepository(FileSystemBasedRunfolderRepo
 
         :param runfolder: an instance of Runfolder
         :param project: an instance of Project
-        :return: the path to the created SampleSheet file
+        :return: a RunfolderFile object representing the written samplesheet file
         """
         def _samplesheet_entry_in_project(e):
             """
@@ -226,9 +226,12 @@ class FileSystemBasedUnorganisedRunfolderRepository(FileSystemBasedRunfolderRepo
         project_samplesheet_data = list(map(_mask_samplesheet_entry, samplesheet_data))
         project_samplesheet_file = os.path.join(project.path, self.SAMPLESHEET_PATH)
         self.metadata_service.write_samplesheet_file(project_samplesheet_file, project_samplesheet_data)
-        return project_samplesheet_file
+        return RunfolderFile(
+            project_samplesheet_file,
+            file_checksum=self.metadata_service.hash_file(
+                project_samplesheet_file))
 
-    def get_project_report_files(self, project):
+    def get_project_report_files(self, runfolder, project):
         """
         Calls the `UnorganisedRunfolderProjectRepository` instance associated with this repository to collect
         paths to report files relevant to the supplied project.
@@ -236,4 +239,4 @@ class FileSystemBasedUnorganisedRunfolderRepository(FileSystemBasedRunfolderRepo
         :param project: an instance of Project
         :return: a tuple with the path to the directory containing the report and a list of paths to the report files
         """
-        return self.project_repository.get_report_files(project)
+        return self.project_repository.get_report_files(project, checksums=runfolder.checksums)
