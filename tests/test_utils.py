@@ -7,7 +7,7 @@ from collections import OrderedDict
 from mock import MagicMock
 
 from delivery.models.project import RunfolderProject
-from delivery.models.runfolder import Runfolder
+from delivery.models.runfolder import Runfolder, RunfolderFile
 from delivery.models.sample import SampleFile, Sample
 from delivery.services.metadata_service import MetadataService
 
@@ -67,6 +67,11 @@ def lane_generator():
     yield from _item_generator()
 
 
+def bool_generator():
+    for item in _item_generator():
+        yield int(item) % 2 == 0
+
+
 def project_sample(project, sample_name, sample_index, lane_no, subdir=False):
     sample_files = []
     sample_id = None
@@ -107,14 +112,15 @@ def runfolder_project(
         project_name="ABC_123",
         sample_indexes=sample_index_generator(),
         lane_numbers=lane_generator(),
-        project_root="Unaligned"):
+        project_root="Unaligned",
+        multiqc_reports=bool_generator()):
     project = RunfolderProject(
         name=project_name,
         path=os.path.join(runfolder.path, project_root, project_name),
         runfolder_path=runfolder.path,
         runfolder_name=runfolder.name
     )
-
+    project.project_files = project_report_files(project, multiqc_report=next(multiqc_reports))
     sample_names = sample_name_generator()
 
     # a straight-forward sample with files on one lane
@@ -163,8 +169,12 @@ def unorganised_runfolder(name="180124_A00181_0019_BH72M5DMXX", root_path="/foo"
         for sample in project.samples:
             for sample_file in sample.sample_files:
                 checksums[os.path.relpath(
-                    sample_file.sample_path,
+                    sample_file.file_path,
                     os.path.dirname(runfolder.path))] = sample_file.checksum
+        for project_file in project.project_files:
+            checksums[os.path.relpath(
+                project_file.file_path,
+                os.path.dirname(runfolder.path))] = project_file.checksum
     runfolder.checksums = checksums
     return runfolder
 
@@ -241,12 +251,15 @@ def project_report_files(project, multiqc_report=True):
         report_dir = project.path
         report_files = [os.path.join(report_dir, "{}_multiqc_report.html".format(project.name)),
                         os.path.join(report_dir, "{}_multiqc_report_data.zip".format(project.name))]
-        return report_dir, report_files
-    report_dir = os.path.join(project.runfolder_path, "Summary", project.name)
-    report_files = list(map(lambda f: os.path.join(report_dir, "report.{}".format(f)), ["html", "xml", "xsl"]))
-    report_files.append(os.path.join(report_dir, "Plots", "file_in_plots.png"))
-    report_files.append(os.path.join(report_dir, "Plots", "subdir", "file_in_plots_subdir"))
-    return report_dir, report_files
+    else:
+        report_dir = os.path.join(project.runfolder_path, "Summary", project.name)
+        report_files = list(map(lambda f: os.path.join(report_dir, "report.{}".format(f)), ["html", "xml", "xsl"]))
+        report_files.append(os.path.join(report_dir, "Plots", "file_in_plots.png"))
+        report_files.append(os.path.join(report_dir, "Plots", "subdir", "file_in_plots_subdir"))
+    return [
+        RunfolderFile(report_file, file_checksum="checksum-for-{}".format(report_file))
+        for report_file in report_files
+    ]
 
 
 _runfolder1 = Runfolder(name="160930_ST-E00216_0111_BH37CWALXX",

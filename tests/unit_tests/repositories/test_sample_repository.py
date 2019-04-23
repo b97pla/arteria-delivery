@@ -15,10 +15,10 @@ class TestSampleRepository(unittest.TestCase):
         self.runfolder = test_utils.UNORGANISED_RUNFOLDER
         self.project = self.runfolder.projects[0]
         self.fastq_files = [
-            sample_file.sample_path for sample in self.project.samples for sample_file in sample.sample_files]
+            sample_file.file_path for sample in self.project.samples for sample_file in sample.sample_files]
         self.runfolder.checksums = {
             os.path.relpath(
-                sample_file.sample_path,
+                sample_file.file_path,
                 os.path.dirname(self.runfolder.path)): sample_file.checksum
             for sample in self.project.samples for sample_file in sample.sample_files}
         self.file_system_service = test_utils.mock_file_system_service([], [], fastq_files=self.fastq_files)

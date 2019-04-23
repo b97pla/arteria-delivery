@@ -38,7 +38,7 @@ class RunfolderProjectBasedSampleRepository(object):
             return re.match(self.filename_regexp, f) is not None
 
         def _name_from_sample_file(s):
-            subdir = self.file_system_service.relpath(os.path.dirname(s.sample_path), project.path)
+            subdir = self.file_system_service.relpath(os.path.dirname(s.file_path), project.path)
             return s.sample_name, subdir if subdir != "." else None
 
         def _sample_from_name(name_id):

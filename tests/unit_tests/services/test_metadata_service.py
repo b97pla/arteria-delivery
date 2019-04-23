@@ -1,7 +1,8 @@
 
+import os
 import shutil
-import tempfile
 import unittest
+import tempfile
 
 from delivery.services.metadata_service import MetadataService
 
@@ -39,3 +40,11 @@ class TestMetadataService(unittest.TestCase):
         for test_string in test_strings:
             observed_hash = self.metadata_service.hash_string(test_string, hasher_obj=hash_obj)
         self.assertEqual(expected_hash, observed_hash)
+
+    def test_hash_file(self):
+        strings_to_hash = ("this-is-a-string-to-be-hashed\n", "this-is-another-string-to-be-hashed\n")
+        expected_hash = "7d652ebbbedfeef99e737e5768fa691c"
+        fd, file_to_hash = tempfile.mkstemp(text=True)
+        with os.fdopen(fd, 'w') as fh:
+            fh.writelines(strings_to_hash)
+        self.assertEqual(expected_hash, MetadataService.hash_file(file_to_hash))

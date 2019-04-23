@@ -74,7 +74,7 @@ class RunfolderService(object):
         """
         return self.runfolder_repo.dump_project_samplesheet(runfolder, project)
 
-    def get_project_report_files(self, project):
+    def get_project_report_files(self, runfolder, project):
         """
         Calls the `FileSystemBasedUnorganisedRunfolderRepository` instance associated with this service to collect
         paths to report files relevant to the supplied project.
@@ -84,4 +84,4 @@ class RunfolderService(object):
         :raises NotImplementedError: if the runfolder repo instance is not a
         `FileSystemBasedUnorganisedRunfolderRepository`
         """
-        return self.runfolder_repo.get_project_report_files(project)
+        return self.runfolder_repo.get_project_report_files(runfolder, project)
