@@ -68,10 +68,15 @@ class OrganiseService(object):
             msg = "Organised project path '{}' already exists".format(organised_project_path)
             if not force:
                 raise ProjectAlreadyOrganisedException(msg)
-            backup_path = "{}.{}".format(organised_projects_path, str(time.time()))
+            organised_projects_backup_path = "{}.bak".format(organised_projects_path)
+            backup_path = os.path.join(
+                organised_projects_backup_path,
+                "{}.{}".format(project.name, str(time.time())))
             log.info(msg)
-            log.info("existing path '{}' will be moved to '{}'".format(organised_projects_path, backup_path))
-            self.file_system_service.rename(organised_projects_path, backup_path)
+            log.info("existing path '{}' will be moved to '{}'".format(organised_project_path, backup_path))
+            if not self.file_system_service.exists(organised_projects_backup_path):
+                self.file_system_service.mkdir(organised_projects_backup_path)
+            self.file_system_service.rename(organised_project_path, backup_path)
 
     def organise_project(self, runfolder, project, organised_projects_path, lanes):
         """
