@@ -4,6 +4,7 @@ import unittest
 
 from delivery.exceptions import ProjectAlreadyOrganisedException
 from delivery.models.runfolder import RunfolderFile
+from delivery.models.sample import Sample
 from delivery.repositories.project_repository import GeneralProjectRepository
 from delivery.repositories.sample_repository import RunfolderProjectBasedSampleRepository
 from delivery.services.file_system_service import FileSystemService

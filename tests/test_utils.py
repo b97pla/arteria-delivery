@@ -72,11 +72,9 @@ def bool_generator():
         yield int(item) % 2 == 0
 
 
-def project_sample(project, sample_name, sample_index, lane_no, subdir=False):
+def project_sample(project, sample_name, sample_index, lane_no, sample_id=None):
     sample_files = []
-    sample_id = None
-    if subdir:
-        sample_id = "{}_id".format(sample_name)
+    if sample_id:
         sample_dir = os.path.join(project.path, sample_id)
     else:
         sample_dir = project.path
@@ -144,11 +142,9 @@ def runfolder_project(
             sample_name=sample_name,
             sample_index=si,
             lane_no=l,
-            subdir=True)
+            sample_id="{}-{}-{}".format(sample_name, si, l))
         for si in [next(sample_indexes), next(sample_indexes)] for l in [next(lane_numbers), next(lane_numbers)]]
-    sample = t_samples[0]
-    sample.sample_files = [f for s in t_samples for f in s.sample_files]
-    samples.append(sample)
+    samples.extend(t_samples)
 
     project.samples = samples
     return project

@@ -202,7 +202,8 @@ class FileSystemBasedUnorganisedRunfolderRepository(FileSystemBasedRunfolderRepo
                 project,
                 e.get("Sample_Project"),
                 e.get("Sample_ID"),
-                int(e.get("Lane")))
+                # e.g. MiSeq SampleSheets may not have the Lane column, so assume 1 if missing
+                int(e.get("Lane", "1")))
 
         def _mask_samplesheet_entry(e):
             """

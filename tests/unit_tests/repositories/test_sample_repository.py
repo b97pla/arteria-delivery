@@ -29,6 +29,12 @@ class TestSampleRepository(unittest.TestCase):
         self.file_system_service.dirname = os.path.dirname
         for sample in self.sample_repo.get_samples(self.project, self.runfolder):
             self.assertIn(sample, self.project.samples)
+            for sample_file in sample.sample_files:
+                sample_file_subdir = os.path.dirname(
+                    os.path.relpath(
+                        sample_file.file_path,
+                        self.project.path))
+                self.assertTrue(sample_file_subdir == sample.sample_id or sample_file_subdir == "")
 
     def test_sample_file_from_sample_path_bad(self):
         bad_filenames = [
