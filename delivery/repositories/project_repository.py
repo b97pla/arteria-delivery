@@ -222,10 +222,11 @@ class UnorganisedRunfolderProjectRepository(object):
         :return: True if a matching sample could be found, False otherwise
         """
         sample_obj = self.get_sample(project, sample_id)
+        sample_lanes = self.sample_repository.sample_lanes(sample_obj) if sample_obj else []
         return all([
             sample_project == project.name,
             sample_obj,
-            sample_lane in self.sample_repository.sample_lanes(sample_obj)])
+            sample_lane in sample_lanes])
 
     @staticmethod
     def get_sample(project, sample_id):

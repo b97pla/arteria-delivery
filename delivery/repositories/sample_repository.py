@@ -1,4 +1,5 @@
 
+import collections
 import logging
 import os
 import re
@@ -41,8 +42,8 @@ class RunfolderProjectBasedSampleRepository(object):
             subdir = self.file_system_service.relpath(os.path.dirname(s.file_path), project.path)
             return s.sample_name, subdir if subdir != "." else None
 
-        def _sample_from_name(name_id):
-            return Sample(name_id[0], project.name, sample_id=name_id[1])
+        def _sample_from_name(name_id, sample_files=None):
+            return Sample(name_id[0], project.name, sample_id=name_id[1], sample_files=sample_files)
 
         def _sample_file_from_path(p):
             return self.sample_file_from_sample_path(p, runfolder)
@@ -51,21 +52,20 @@ class RunfolderProjectBasedSampleRepository(object):
             _is_fastq_file,
             self.file_system_service.list_files_recursively(project.path))
 
-        # create SampleFile objects from the paths, create Sample objects and attach the sample file objects
+        # create SampleFile objects from the paths
         project_sample_files = list(map(
             _sample_file_from_path,
             project_fastq_files))
-        project_samples = map(
-            _sample_from_name,
-            set(map(
-                _name_from_sample_file,
-                project_sample_files)))
-        for project_sample in project_samples:
-            project_sample.sample_files = list(filter(
-                lambda f: f.sample_name == project_sample.name,
-                project_sample_files
-            ))
-            yield project_sample
+
+        # get the sample names and corresponding sample id from the SampleFile objects and gather a list of
+        # the SampleFile objects belonging to each sample name and sample id tuple
+        project_samples = collections.defaultdict(list)
+        for project_sample_file in project_sample_files:
+            project_samples[_name_from_sample_file(project_sample_file)].append(project_sample_file)
+
+        # finally, create Sample objects from the sample names and sample id tuples and attach the SampleFile objects
+        for sample_name_id, sample_files in project_samples.items():
+            yield _sample_from_name(sample_name_id, sample_files)
 
     def checksum_from_sample_path(self, sample_path, runfolder):
         """
