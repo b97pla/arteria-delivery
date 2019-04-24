@@ -32,7 +32,7 @@ class MetadataService(object):
         try:
             with open(checksum_file) as chksumh:
                 for entry in chksumh:
-                    checksum, file_path = entry.split()
+                    checksum, file_path = entry.split(maxsplit=1)
                     file_checksums[file_path] = checksum
         except IOError as e:
             raise ChecksumFileNotFoundException("Checksum file '{}' could not be opened: {}".format(checksum_file, e))
