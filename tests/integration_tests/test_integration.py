@@ -147,7 +147,7 @@ class TestIntegration(AsyncHTTPTestCase):
                 sorted(response_json["projects"]))
 
             for project in runfolder.projects:
-                organised_path = os.path.join(runfolder.path, "Projects", project.name)
+                organised_path = os.path.join(runfolder.path, "Projects", project.name, runfolder.name)
                 self.assertTrue(os.path.exists(organised_path))
                 checksum_file = os.path.join(organised_path, "checksums.md5")
                 samplesheet_file = os.path.join(organised_path, "SampleSheet.csv")
@@ -161,7 +161,9 @@ class TestIntegration(AsyncHTTPTestCase):
                     self.assertEqual(checksums[file_path], expected_checksum)
 
                 _verify_checksum(
-                    os.path.basename(samplesheet_file),
+                    os.path.join(
+                        runfolder.name,
+                        os.path.basename(samplesheet_file)),
                     MetadataService.hash_file(samplesheet_file))
 
                 project_file_base = os.path.dirname(project.project_files[0].file_path)
@@ -172,15 +174,17 @@ class TestIntegration(AsyncHTTPTestCase):
                         os.path.samefile(
                             organised_project_file_path,
                             project_file.file_path))
-                    _verify_checksum(relative_path, project_file.checksum)
+                    _verify_checksum(os.path.join(runfolder.name, relative_path), project_file.checksum)
                 for sample in project.samples:
-                    sample_path = os.path.join(organised_path, runfolder.name, sample.sample_id)
+                    sample_path = os.path.join(organised_path, sample.sample_id)
                     self.assertTrue(os.path.exists(sample_path))
                     for sample_file in sample.sample_files:
                         organised_file_path = os.path.join(sample_path, sample_file.file_name)
                         self.assertTrue(os.path.exists(organised_file_path))
                         self.assertTrue(os.path.samefile(sample_file.file_path, organised_file_path))
-                        relative_file_path = os.path.relpath(organised_file_path, organised_path)
+                        relative_file_path = os.path.join(
+                            runfolder.name,
+                            os.path.relpath(organised_file_path, organised_path))
                         _verify_checksum(relative_file_path, sample_file.checksum)
 
     def test_can_stage_and_delivery_runfolder(self):

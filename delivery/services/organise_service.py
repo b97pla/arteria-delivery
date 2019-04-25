@@ -109,7 +109,7 @@ class OrganiseService(object):
                 organised_project_files.append(
                     self.organise_project_file(
                         project_file,
-                        organised_project_path,
+                        organised_project_runfolder_path,
                         project_file_base=project_file_base))
         organised_project = RunfolderProject(
             project.name,

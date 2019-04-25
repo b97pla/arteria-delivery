@@ -107,8 +107,8 @@ class TestOrganiseService(unittest.TestCase):
             organise_project_file_mock.assert_has_calls([
                 mock.call(
                     project_file,
-                    os.path.join(organised_projects_path, self.project.name),
-                    os.path.dirname(self.project.project_files[0].file_path)
+                    os.path.join(organised_projects_path, self.project.name, self.project.runfolder_name),
+                    project_file_base=os.path.dirname(self.project.project_files[0].file_path)
                 )
                 for project_file in self.project.project_files])
 

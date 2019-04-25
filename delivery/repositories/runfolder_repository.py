@@ -225,7 +225,7 @@ class FileSystemBasedUnorganisedRunfolderRepository(FileSystemBasedRunfolderRepo
         samplesheet_data = self.get_samplesheet(runfolder)
         # mask all entries not belonging to the project and write the resulting data to the project-specific location
         project_samplesheet_data = list(map(_mask_samplesheet_entry, samplesheet_data))
-        project_samplesheet_file = os.path.join(project.path, self.SAMPLESHEET_PATH)
+        project_samplesheet_file = os.path.join(project.path, runfolder.name, self.SAMPLESHEET_PATH)
         self.metadata_service.write_samplesheet_file(project_samplesheet_file, project_samplesheet_data)
         return RunfolderFile(
             project_samplesheet_file,

@@ -95,7 +95,7 @@ class UnorganisedRunfolderProjectRepository(object):
             for sample_file in sample.sample_files:
                 yield _sample_file_checksum(sample_file)
 
-        checksum_path = os.path.join(project.path, "checksums.md5")
+        checksum_path = os.path.join(project.path, project.runfolder_name, "checksums.md5")
         checksums = {
             path: checksum for sample in project.samples for checksum, path in _sample_checksums(sample) if checksum}
         checksums.update({
