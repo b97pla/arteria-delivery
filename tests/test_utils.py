@@ -93,8 +93,8 @@ def project_sample(project, sample_name, sample_index, lane_no, sample_id=None):
                     sample_path=sample_path,
                     sample_name=sample_name,
                     sample_index=sample_index,
-                    lane_no=lane_no,
-                    read_no=read_no,
+                    lane_no=int(lane_no),
+                    read_no=int(read_no),
                     is_index=is_index,
                     checksum="checksum-for-{}".format(sample_path)))
     return Sample(

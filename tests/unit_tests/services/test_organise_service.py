@@ -33,14 +33,22 @@ class TestOrganiseService(unittest.TestCase):
             file_system_service=self.file_system_service)
 
     def test_organise_runfolder(self):
-        self.runfolder_service.find_projects_on_runfolder.side_effect = yield from [self.project]
+        self.runfolder_service.find_runfolder.return_value = self.runfolder
+        self.runfolder_service.find_projects_on_runfolder.side_effect = [[self.project]]
+        self.file_system_service.exists.return_value = False
         with mock.patch.object(self.organise_service, "organise_project", autospec=True) as organise_project_mock:
             runfolder_id = self.runfolder.name
             lanes = [1, 2, 3]
             projects = ["a", "b", "c"]
             force = False
             self.organise_service.organise_runfolder(runfolder_id, lanes, projects, force)
-            organise_project_mock.assert_called_once_with(self.runfolder, self.project, lanes, force)
+            organise_project_mock.assert_called_once_with(
+                self.runfolder,
+                self.project,
+                os.path.dirname(
+                    os.path.dirname(
+                        self.organised_project_path)),
+                lanes)
 
     def test_check_previously_organised_project(self):
         organised_project_base_path = os.path.dirname(self.organised_project_path)
@@ -69,11 +77,12 @@ class TestOrganiseService(unittest.TestCase):
         self.file_system_service.rename.assert_called_once()
 
     def test_organise_runfolder_already_organised(self):
+        self.runfolder_service.find_runfolder.return_value = self.runfolder
         self.file_system_service.exists.return_value = True
         with mock.patch.object(self.organise_service, "organise_project", autospec=True) as organise_project_mock:
             expected_organised_project = "this-is-an-organised-project"
             organise_project_mock.return_value = expected_organised_project
-            self.runfolder_service.find_projects_on_runfolder.side_effect = yield from [self.project]
+            self.runfolder_service.find_projects_on_runfolder.side_effect = [[self.project], [self.project]]
             runfolder_id = self.runfolder.name
 
             # without force
@@ -158,7 +167,7 @@ class TestOrganiseService(unittest.TestCase):
                     lanes)
 
                 # if the sample file is derived from a lane that should be skipped
-                if sample_file.lane_no not in lanes:
+                if int(sample_file.lane_no) not in lanes:
                     self.assertIsNone(organised_sample_file)
                     continue
 

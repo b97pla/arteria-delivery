@@ -60,7 +60,8 @@ class OrganiseService(object):
         return Runfolder(
             runfolder.name,
             runfolder.path,
-            projects=organised_projects)
+            projects=organised_projects,
+            checksums=runfolder.checksums)
 
     def check_previously_organised_project(self, project, organised_projects_path, force):
         organised_project_path = os.path.join(organised_projects_path, project.name)

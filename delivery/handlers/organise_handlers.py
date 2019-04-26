@@ -46,7 +46,7 @@ class OrganiseRunfolderHandler(BaseOrganiseHandler):
 
         """
 
-        log.debug("Trying to organise runfolder with id: {}".format(runfolder_id))
+        log.info("Trying to organise runfolder with id: {}".format(runfolder_id))
 
         try:
             request_data = self.body_as_object()
@@ -58,7 +58,7 @@ class OrganiseRunfolderHandler(BaseOrganiseHandler):
         projects = request_data.get("projects", [])
 
         if any([force, lanes, projects]):
-            log.debug(
+            log.info(
                 "Got the following 'force', 'lanes' and 'projects' attributes to organise: {}".format(
                     [force, lanes, projects]))
 
@@ -78,6 +78,6 @@ class OrganiseRunfolderHandler(BaseOrganiseHandler):
         except ProjectAlreadyOrganisedException as e:
             log.error(str(e), exc_info=e)
             self.set_status(FORBIDDEN, reason=str(e))
-        except (FileNameParsingException, Exception) as e:
+        except FileNameParsingException as e:
             log.error(str(e), exc_info=e)
             self.set_status(INTERNAL_SERVER_ERROR, reason=str(e))
