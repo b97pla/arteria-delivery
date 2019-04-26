@@ -129,9 +129,6 @@ class FileSystemBasedRunfolderRepository(object):
             if project.name == project_name:
                 yield project
 
-    def dump_project_checksums(self, project):
-        raise NotImplementedError()
-
     def samplesheet_file(self, runfolder):
         return os.path.join(runfolder.path, self.SAMPLESHEET_PATH)
 
