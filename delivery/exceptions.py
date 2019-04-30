@@ -7,7 +7,28 @@ class RunfolderNotFoundException(Exception):
     pass
 
 
+class ChecksumNotFoundException(Exception):
+    """
+    Should be raised when a file checksum could not be found in the list of checksums
+    """
+    pass
+
+
+class ChecksumFileNotFoundException(Exception):
+    """
+    Should be raised when an expected checksum file could not be found
+    """
+    pass
+
+
 class ProjectNotFoundException(Exception):
+    """
+    Should be raised when and invalid or non-existent project is searched for.
+    """
+    pass
+
+
+class ProjectReportNotFoundException(Exception):
     """
     Should be raised when and invalid or non-existent project is searched for.
     """
@@ -39,5 +60,27 @@ class CannotParseMoverOutputException(Exception):
 class ProjectAlreadyDeliveredException(Exception):
     """
     Should be raised when a project has already been delivered.
+    """
+    pass
+
+
+class ProjectAlreadyOrganisedException(Exception):
+    """
+    Should be raised when a project has already been organised.
+    """
+    pass
+
+
+class FileNameParsingException(Exception):
+    pass
+
+
+class SamplesheetNotFoundException(Exception):
+    pass
+
+
+class ProjectsDirNotfoundException(Exception):
+    """
+    Should be raised when a directory containing projects could not be found
     """
     pass

@@ -90,7 +90,8 @@ class DeliveryService(object):
         return self.file_system_service.abspath(project_dir)
 
     def deliver_single_runfolder(self, runfolder_name, only_these_projects, force_delivery):
-        projects = list(self.runfolder_service.find_projects_on_runfolder(runfolder_name, only_these_projects))
+        runfolder = self.runfolder_service.find_runfolder(runfolder_name)
+        projects = list(self.runfolder_service.find_projects_on_runfolder(runfolder, only_these_projects))
         return self._start_staging_projects(projects, force_delivery)
 
     def _get_projects_to_deliver(self, projects, mode, batch_nbr):

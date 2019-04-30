@@ -1,6 +1,5 @@
 
 import os
-
 import logging
 
 log = logging.getLogger(__name__)
@@ -42,6 +41,11 @@ class FileSystemService(object):
         return self.list_directories(base_path)
 
     @staticmethod
+    def list_files_recursively(base_path):
+        for root, dirs, files in os.walk(base_path):
+            yield from map(lambda f: os.path.join(root, f), files)
+
+    @staticmethod
     def isdir(path):
         """
         Shadows os.path.isdir
@@ -77,14 +81,14 @@ class FileSystemService(object):
         """
         return os.path.abspath(path)
 
-    @staticmethod
-    def symlink(source, link_name):
+    def symlink(self, source, link_name):
         """
         Shadows os.symlink
         :param source: of link
         :param link_name: the name of the link to create
         :return: None
         """
+        self.makedirs(self.dirname(link_name), exist_ok=True)
         return os.symlink(source, link_name)
 
     @staticmethod
@@ -97,14 +101,26 @@ class FileSystemService(object):
         os.mkdir(path)
 
     @staticmethod
-    def makedirs(path):
+    def makedirs(path, **kwargs):
         """
         shadows os.makedirs
         :param path: to dir to create
         :return: None
         """
-        os.makedirs(path)
+        os.makedirs(path, **kwargs)
 
     @staticmethod
     def exists(path):
         return os.path.exists(path)
+
+    @staticmethod
+    def dirname(path):
+        return os.path.dirname(path)
+
+    @staticmethod
+    def rename(src, dst):
+        return os.rename(src, dst)
+
+    @staticmethod
+    def relpath(path, start):
+        return os.path.relpath(path, start)

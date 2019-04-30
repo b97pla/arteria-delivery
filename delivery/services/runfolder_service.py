@@ -6,6 +6,7 @@ from delivery.exceptions import RunfolderNotFoundException, ProjectNotFoundExcep
 
 log = logging.getLogger(__name__)
 
+
 class RunfolderService(object):
 
     def __init__(self, runfolder_repo):
@@ -25,8 +26,7 @@ class RunfolderService(object):
         projects_on_runfolder_set = set(projects_on_runfolder)
         return projects_to_stage_set.issubset(projects_on_runfolder_set)
 
-    def find_projects_on_runfolder(self, runfolder_name, only_these_projects=None):
-        runfolder = self.find_runfolder(runfolder_name)
+    def find_projects_on_runfolder(self, runfolder, only_these_projects=None):
 
         names_of_project_on_runfolder = list(map(lambda x: x.name, runfolder.projects))
 
@@ -48,3 +48,40 @@ class RunfolderService(object):
 
     def find_runfolders_for_project(self, project_name):
         return self.runfolder_repo.get_project(project_name=project_name)
+
+    def dump_project_checksums(self, project):
+        """
+        Calls the `FileSystemBasedUnorganisedRunfolderRepository` instance associated with this service to dump out
+        checksums for files relevant to the supplied project to a file under the project path.
+
+        :param project: an instance of Project
+        :return: the path to the created checksum file
+        :raises NotImplementedError: if the runfolder repo instance is not a
+        `FileSystemBasedUnorganisedRunfolderRepository`
+        """
+        return self.runfolder_repo.dump_project_checksums(project)
+
+    def dump_project_samplesheet(self, runfolder, project):
+        """
+        Calls the `FileSystemBasedUnorganisedRunfolderRepository` instance associated with this service to write a
+        samplesheet only including the supplied project.
+
+        :param runfolder: an instance of Runfolder
+        :param project: an instance of Project
+        :return: the path to the created samplesheet file
+        :raises NotImplementedError: if the runfolder repo instance is not a
+        `FileSystemBasedUnorganisedRunfolderRepository`
+        """
+        return self.runfolder_repo.dump_project_samplesheet(runfolder, project)
+
+    def get_project_report_files(self, runfolder, project):
+        """
+        Calls the `FileSystemBasedUnorganisedRunfolderRepository` instance associated with this service to collect
+        paths to report files relevant to the supplied project.
+
+        :param project: an instance of Project
+        :return: a tuple with the path to the directory containing the report and a list of paths to the report files
+        :raises NotImplementedError: if the runfolder repo instance is not a
+        `FileSystemBasedUnorganisedRunfolderRepository`
+        """
+        return self.runfolder_repo.get_project_report_files(runfolder, project)
